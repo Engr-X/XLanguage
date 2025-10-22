@@ -1,0 +1,77 @@
+#include "lib/variable.h"
+#include "lib/utils.h"
+
+void variable_init(struct variable_table* table)
+{
+    table -> map = NULL;
+}
+
+void variable_add(struct variable_table* table, const char* name, const char* type)
+{
+    struct variable* v = NULL;
+
+    HASH_FIND_STR(table -> map, name, v);
+
+    if (v == NULL)
+    {
+        v = (struct variable*)(malloc(sizeof(struct variable)));
+        v -> name = utils_new_string(MAX_X_VARIABLE_LENGTH + 1);
+        v -> type = utils_new_string(MAX_CLASS_LENGTH + 1);
+
+        strcpy(v -> name, name);
+        strcpy(v -> type, type);
+
+        HASH_ADD_STR(table -> map, name, v);
+    }
+    else
+    {
+        // todo
+    }
+}
+
+void variable_get(const struct variable_table* table, const char* name, struct variable* dst)
+{
+    struct variable* v = NULL;
+    HASH_FIND_STR(table -> map, name, v);
+    *dst = *v;
+}
+
+void variable_remove(struct variable_table* table, const char* name)
+{
+    struct variable* v = NULL;
+    HASH_FIND_STR(table -> map, name, v);
+    HASH_DEL(table -> map, v);
+    free(v -> name);
+    free(v -> type);
+    free(v);
+}
+
+void variable_print(const struct variable_table* table)
+{
+    int i = 0;
+
+    struct variable* v;
+
+    for (v = table -> map; v != NULL; v = (struct variable*)(v -> hh.next), i++)
+        printf("%d: %s -> %s\n", i, v -> name, v -> type);
+}
+
+void variable_clear(struct variable_table* table)
+{
+    struct variable* v;
+    struct variable* temp;
+
+    HASH_ITER(hh, table -> map, v, temp)
+    {
+        HASH_DEL(table -> map, v);
+        free(v);
+    }
+    table -> map = NULL;
+}
+
+bool variable_contain(const struct variable_table* table, const char* name)
+{
+    struct variable* v = NULL;
+    HASH_FIND_STR(table -> map, name, v);
+    return v != NULL;
+}
