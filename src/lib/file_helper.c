@@ -1,9 +1,28 @@
-#include "lib/file_helper.h"
-
 #include <iconv.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#include <io.h>
+#define PATH_SEPARATOR ';'
+#define DIR_SEPARATOR '\\'
+#elif defined(__APPLE__) && defined(__MACH__)
+#include <mach-o/dyld.h>
+#include <unistd.h>
+#include <unistd.h>
+#define PATH_SEPARATOR ':'
+#define DIR_SEPARATOR '/'
+#else
+#include <unistd.h>
+#include <unistd.h>
+#define PATH_SEPARATOR ':'
+#define DIR_SEPARATOR '/'
+#endif
+
+#include "lib/file_helper.h"
+#include "lib/utils.h"
 
 void remove_r(char* code)
 {
@@ -95,4 +114,59 @@ bool file_write(const char* path, const char* content, bool append)
 bool file_delete(const char* path)
 {
     return !remove(path);
+}
+
+int where(const char* file_name, char* dst)
+{
+    if (!file_name || !dst)
+        return 0;
+
+    // Check current directory first
+    char* cwd = utils_new_string(4096);
+    char* full_path = utils_new_string(4096);
+
+    if (getcwd(cwd, 4096) != NULL)
+    {
+        #ifdef _WIN32
+            sprintf(full_path, "%s%c%s.exe", cwd, DIR_SEPARATOR, file_name);
+        #else
+            sprintf(full_path, "%s%c%s", cwd, DIR_SEPARATOR, file_name);
+        #endif
+            if (access(full_path, X_OK) == 0)
+            {  
+                // Use X_OK (1) for executable check; on Windows, adjust if needed (e.g., to 0 for existence)
+                strcpy(dst, full_path);
+                return 1;
+            }
+    }
+
+    const char* path_env = getenv("PATH");
+    if (!path_env) return 0;
+
+    char* paths = strdup(path_env);
+    char* saveptr = NULL;
+    char* token = strtok_r(paths, (char[]){PATH_SEPARATOR, 0}, &saveptr);
+
+    while (token)
+    {
+        #ifdef _WIN32
+                sprintf(full_path, "%s%c%s.exe", token, DIR_SEPARATOR, file_name);
+        #else
+                sprintf(full_path, "%s%c%s", token, DIR_SEPARATOR, file_name);
+        #endif
+
+        if (access(full_path, X_OK) == 0)
+        {
+            strcpy(dst, full_path);
+            free(paths);
+            return 1;
+        }
+
+        token = strtok_r(NULL, (char[]){PATH_SEPARATOR, 0}, &saveptr);
+    }
+
+    free(paths);
+    free(cwd);
+    free(full_path);
+    return 0;
 }

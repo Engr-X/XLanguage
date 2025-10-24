@@ -26,7 +26,7 @@ typedef struct variable_table
 
 void variable_init(struct variable_table* table);
 void variable_add(struct variable_table* table, const char* name, const char* type);
-void variable_get(const struct variable_table* table, const char* name, struct variable* dst);
+struct variable* variable_get(const struct variable_table* table, const char* name);
 void variable_remove(struct variable_table* table, const char* name);
 void variable_print(const struct variable_table* table);
 void variable_clear(struct variable_table* table);

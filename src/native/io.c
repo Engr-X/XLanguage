@@ -55,7 +55,7 @@ inline void __native_xl_print_float(float value)
 
 inline void __native_xl_print_double(double value)
 {
-    printf("%f", value);
+    printf("%lf", value);
 }
 
 inline void __native_xl_print_str(const char* value)
@@ -96,12 +96,12 @@ inline void __native_xl_println_long(long long value)
 
 inline void __native_xl_println_float(float value)
 {
-    printf("%.1f\n", value);
+    printf("%.4f\n", value);
 }
 
 inline void __native_xl_println_double(double value)
 {
-    printf("%.1f\n", value);
+    printf("%lf\n", value);
 }
 
 inline void __native_xl_println_str(const char* value)

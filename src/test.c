@@ -8,7 +8,7 @@
 #include "lib/operation.h"
 #include "lib/file_helper.h"
 #include "lib/utils.h"
-#include "core/func_convert.h"
+#include "core/expr_convert.h"
 
 #include "math.h"
 
@@ -39,8 +39,8 @@ void token_test(const char* code)
     struct token_stack* postfix = (struct token_stack*)(malloc(sizeof(struct token_stack)));
     token_init(token_stack);
 
-    func_tran_tokenize(code, token_stack);
-    func_tran_to_postfix(token_stack, postfix);
+    expr_tokenize(code, token_stack);
+    expr_to_postfix(token_stack, postfix);
     token_clear(postfix);
     token_clear(token_stack);
     free(token_stack);
@@ -65,8 +65,8 @@ void postfix_test(const char* code)
     token_init(token_stack);
     token_init(postfix);
 
-    func_tran_tokenize(code, token_stack);
-    func_tran_to_postfix(token_stack, postfix);
+    expr_tokenize(code, token_stack);
+    expr_to_postfix(token_stack, postfix);
 
     token_print(postfix);
 
@@ -96,9 +96,9 @@ void translate_test(const char* code)
     function_init(function_table);
     function_add_default(function_table);
 
-    func_tran_tokenize(code, token_stack);
-    func_tran_to_postfix(token_stack, postfix);
-    func_tran_convert(postfix, NULL, operation_table, function_table, return_type, c_code);
+    expr_tokenize(code, token_stack);
+    expr_to_postfix(token_stack, postfix);
+    expr_convert(postfix, NULL, operation_table, function_table, return_type, c_code);
 
     puts(c_code);
 
@@ -123,7 +123,12 @@ void operator_test()
     operation_init(&dst_table);
     operation_add_default(&dst_table);
 
-    printf("%d", operation_contain(&dst_table, "bool", "!^", "bool"));
+    struct operation* op;
+    op = operation_get(&dst_table, "bool", "!^", "bool");
+
+    char c_format[64];
+    operation_plugin(op, "true", "false", c_format);
+    printf("c_format: %s\n", c_format);
 
     //operation_print(&dst_table);
     operation_clear(&dst_table);
@@ -134,16 +139,27 @@ inline static void format_dual_arity1(const char* op, char* c_format)
     sprintf(c_format, "%%s %s %%s", op);
 }
 
+void getGCC()
+{
+    char gcc_path[1024];
+    int found = where("xlang", gcc_path);
+    if (found)
+        printf("GCC found at: %s\n", gcc_path);
+    else
+        printf("GCC not found in PATH.\n");
+}
+
 int main(int argc, char const *argv[])
 {
     puts("start test");
+    getGCC();
 
     char* code = malloc(2048);
     //function_test();
     strcpy(code, "println(true !^ false | true)\n");
     //operator_test();
     //function_test()
-    postfix_test(code);
+    //postfix_test(code);
     //translate_test(code);
     //translate_test(code);
     free(code);

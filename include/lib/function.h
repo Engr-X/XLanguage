@@ -35,7 +35,7 @@ typedef struct function_table
 void function_init(struct function_table* table);
 void function_add(struct function_table* table, const char* name, const char* signature, const char* return_type);
 void function_add_native(struct function_table* table, const char* name, const char* c_name, const char* signature, const char* return_type);
-void function_get(const struct function_table* table, const char* name, const char* signature, struct function* dst);
+struct function* function_get(const struct function_table* table, const char* name, const char* signature);
 void function_remove(struct function_table* table, const char* name, const char* signature);
 void function_print(const struct function_table* table);
 void function_clear(struct function_table* table);

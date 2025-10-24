@@ -1,6 +1,16 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <time.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#define PATH_SEPARATOR '\\'
+#else
+#include <unistd.h>
+#include <limits.h>
+#define PATH_SEPARATOR '/'
+#endif
 
 #include "lib/utils.h"
 #include "lib/file_helper.h"
@@ -49,11 +59,50 @@ static void file_add(struct file_list* list, const char* path)
     }
 }
 
+bool get_xlang_home(char* home_dst)
+{
+    const char* env = getenv("XLANG_HOME");
+
+    if (env && env[0] != '\0')
+    {
+        strcpy(home_dst, env);
+        return true;
+    }
+    else
+    {
+        char exe_path[1024];
+        where("xlang", exe_path);
+        char* p = strrchr(exe_path, PATH_SEPARATOR);
+
+        if (!p)
+            return 0;
+
+        *p = '\0';
+        p = strrchr(exe_path, PATH_SEPARATOR);
+        *p = '\0';
+
+        strcpy(home_dst, exe_path);
+        return true;
+    }
+
+    return false;
+}
+
 int main(int argc, char const *argv[])
 {
     srand(time(NULL));
+    
+    char gcc_path[1024];
+    int found = where("gcc", gcc_path);
 
-    const char* xlang_home = getenv("XLANG_HOME");
+    if (!found)
+    {
+        printf_err("GCC not found in PATH.\n");
+        return 1;
+    }
+
+    char xlang_home[1024];
+    get_xlang_home(xlang_home);
     printf("xlang_home: %s\n", xlang_home);
 
     struct file_list* file_list = (struct file_list*)(malloc(sizeof(struct file_list)));
@@ -92,7 +141,7 @@ int main(int argc, char const *argv[])
         strcat(command, argv[i]);
     }
 
-    char lib_cmd[256];
+    char* lib_cmd = utils_new_string(4096);
     #if defined(_WIN32) || defined(_WIN64)
         sprintf(lib_cmd, " -L\"%s/lib\" -lnative_io -lnative_std", xlang_home);
     #else
@@ -100,7 +149,7 @@ int main(int argc, char const *argv[])
     #endif
         strcat(command, lib_cmd);
 
-    printf("run: %s\n",command);
+    printf("run: %s\n", command);
     utils_cmd(command);
 
     //delete .c
@@ -108,7 +157,7 @@ int main(int argc, char const *argv[])
 
     while (p != NULL)
     {
-        file_delete(p -> path);
+        //file_delete(p -> path);
         free(p -> path);
         struct file_node* temp = p;
         p = p -> next;
@@ -118,6 +167,8 @@ int main(int argc, char const *argv[])
     free(input);
     free(c_code);
     free(command);
+    free(lib_cmd);
     free(file_list);
+    puts("done.");
     return 0;
 }

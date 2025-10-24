@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "lib/utils.h"
-#include "lib/core_types.h"
 #include "core/type_convert.h"
 #include "native/constants.h"
 
@@ -35,7 +34,7 @@ const char* C_TYPES_NAMES[25] =
 
 void type_tran_print()
 {
-    for (ubyte i = 0; i < TYPE_COUNT; i++)
+    for (uint8_t i = 0; i < TYPE_COUNT; i++)
         printf("X: %s, C: %s\n", X_BASIC_TYPES[i], C_TYPES_NAMES[i]);
 }
 

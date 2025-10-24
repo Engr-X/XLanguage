@@ -1,22 +1,21 @@
 #include "core/codegen.h"
 
 #include "lib/utils.h"
-#include "core/func_convert.h"
-#include "core/type_convert.h"
+#include "core/expr_convert.h"
 
 #define CLASS_DEF_KEYWORD "class"
 #define FUNCTION_DEF_KEYWORD "func"
 
 enum statement_type
 {
-    CLASS_DEF,
-    FUNC_DEF,
-    IF,
-    IF_ELSE,
-    SWITCH_CASE,
-    LOOP,
-    ITERATION,
-    OTHER_OPERATION
+    CLASS_DEF = 0,
+    FUNC_DEF = 1,
+    IF = 2,
+    IF_ELSE = 3,
+    SWITCH_CASE = 4,
+    LOOP = 5,
+    ITERATION = 6,
+    OTHER_OPERATION = 7
 };
 
 void statement_print(struct statement_list* list)
@@ -157,10 +156,22 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
             p++;
 
         prev_p = p;
+        bracket_count = 0;
+        quatation_count = 0;
+        brace_count = 0;
+        double_quote_open = false;
+        single_quote_open = false;
 
         // find first \n
-        while (*p != '\0' && *p != '\n')
+        while (true)
         {
+            if (*p == '\0' || *p == ';')
+                break;
+
+            if (brace_count == 0 && bracket_count == 0 && quatation_count == 0
+                && !double_quote_open && !single_quote_open && *p == '\n')
+                break;
+
             switch (*p)
             {
                 case '(': {bracket_count++; break;}
@@ -175,6 +186,9 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
 
             p++;
         }
+
+        if (prev_p == p)
+            continue;
 
         utils_substring(prev_p, 0, p - prev_p, buffer);
 
@@ -240,11 +254,6 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
         } // for statement
         else
         {
-            while (*p != '\0' && *p == '\n' &&
-                   bracket_count == 0 && quatation_count == 0 && brace_count == 0 &&
-                   !double_quote_open && !single_quote_open)
-                p++;
-
             utils_substring(prev_p, 0, p - prev_p, buffer);
             prev_p = p;
             statement_add(dst, buffer, OTHER_OPERATION); 
@@ -292,13 +301,85 @@ static void codegen_convert(struct statement_list* c_code, char* other_dst, char
         {
             //puts("define function");
         }
-        else
+        else // other
         {
-            func_tran_tokenize(code, token_stack);
-            func_tran_to_postfix(token_stack, postfix);
-            func_tran_convert(postfix, global_variables, gloablal_operations, global_functions, buffer3, buffer1);
-            strcat(main_dst, buffer1);
-            strcat(main_dst, ";\n");
+            switch (p -> type)
+            {
+                case IF:
+                case IF_ELSE:
+                case SWITCH_CASE:
+                case LOOP:
+                case ITERATION:
+                {
+                    puts("not implemented yet");
+                    break;
+                }
+
+                case OTHER_OPERATION:
+                {
+                    int16_t index = -1;
+                    // find first '=', but not "==". And it is not in "String" and 'char'
+                    for (char* iter = (char*)(code); *iter != '\0'; iter++)
+                    {
+                        if (*iter == '"')
+                        {
+                            iter++; // 跳过初始 "
+                            while (*iter != '\0')
+                            {
+                                if (*iter == '\\' && *(iter + 1) != '\0') iter++;
+                                else if (*iter == '"') break; // 找到真正的结束 "
+                                iter++;
+                            }
+                        }
+                        else if (*iter == '\'')
+                        {
+                            iter++;
+                            while (*iter != '\0')
+                            {
+                                if (*iter == '\\' && *(iter+1) != '\0') iter++;
+                                else if (*iter == '\'') break;
+                                iter++;
+                            }
+                        }
+                        else if (*iter == '=')
+                        {
+                            if (*(iter + 1) == '=')
+                            {
+                                iter++;
+                                continue;
+                            }
+                            else
+                            {
+                                index = iter - code;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (index == -1) // function call or operation without assignment
+                    {
+                        expr_tokenize(code, token_stack);
+                        expr_to_postfix(token_stack, postfix);
+                        expr_convert(postfix, global_variables, gloablal_operations, global_functions, buffer3, buffer1);
+                        strcat(main_dst, buffer1);
+                        strcat(main_dst, ";\n");
+                        break;
+                    }
+                    else // have assignment
+                    {
+                        utils_substring(code, 0, index, buffer2); // left side
+                        utils_substring(code, index + 1, strlen(code) - index, buffer1); // right side
+                        break;   
+                    }
+                }
+
+                default:
+                {
+                    printf_err("unknown statement type %d\n", p -> type);
+                    break;
+                }
+            }
+
             token_clear(postfix);
             token_clear(token_stack);
             token_init(token_stack);
@@ -324,7 +405,6 @@ void codegen_generate_c_code(const char* x_code, char* dst)
     strcat(dst, "#include <stdlib.h>\n");
     strcat(dst, "#include <string.h>\n");
     strcat(dst, "#include <math.h>\n");
-    //strcat(dst, "#include <floats.h>\n");
     strcat(dst, "#include <ctype.h>\n");
     strcat(dst, "#include <stdbool.h>\n");
     strcat(dst, "#include <time.h>\n");

@@ -7,7 +7,4 @@
 #define null NULL
 #define nullptr NULL
 
-typedef char byte;
-typedef unsigned char ubyte;
-
 #endif

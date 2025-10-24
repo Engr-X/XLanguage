@@ -42,8 +42,9 @@ void operation_add_native(struct operation_table* table, const char* left_type, 
 void operation_clear(struct operation_table* table);
 void operation_add_default(struct operation_table* dst_table);
 
-void operation_get(const struct operation_table* table, const char* left, const char* op, const char* right, struct operation* dst);
 bool operation_contain(const struct operation_table* table, const char* left, const char* op, const char* right);
+
+struct operation* operation_get(const struct operation_table* table, const char* left, const char* op, const char* right);
 
 
 

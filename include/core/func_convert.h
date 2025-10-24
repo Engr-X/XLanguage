@@ -18,13 +18,14 @@ typedef enum toke_type
     TT_ARRAY = 3,
     TT_FUNCTION = 4,
     TT_OPERATION = 5,
-    TT_DOT = 6,
-    TT_CAST = 7
-} TokenType;
+    TT_EXPRESSION = 6,
+    TT_DOT = 7,
+    TT_CAST = 8
+} CodeTokenType;
 
 typedef enum operation_priority
 {
-    O_ASSIGNMENT = 0,
+    O_ASSIGNMENT = 0,           // =
     O_EQUAL = 1,                // ==   
     O_NOT_EQUAL = 1,            // !=   
     O_GREATER = 2,              // >    (微调：关系高于相等)
@@ -77,12 +78,8 @@ void token_print(struct token_stack* stack);
 void token_init(struct token_stack* stack);
 void token_add(struct token_stack* stack, char* token, uint8_t raw_type, uint8_t priority);
 void token_clear(struct token_stack* stack);
+void token_free(struct token_node* node);
 struct token_node* token_pop(struct token_stack* stack);
-
-void func_tran_tokenize(const char* std_code, struct token_stack* dst);
-void func_tran_to_postfix(struct token_stack* infix, struct token_stack* postfix);
-void func_tran_translate(const char* std_code, struct function_table* func_table, struct variable_table* variable_table, char* dst);
-bool is_native_function(const char* function_name, const char* signature);
-void func_tran_convert(struct token_stack* postfix, const struct variable_table* variable_table, const struct operation_table* operation_table, const struct function_table* function_table, char* return_type_dst, char* c_code);
+struct token_node* token_pop_front(struct token_stack* stack);
 
 #endif

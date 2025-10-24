@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "core/type_convert.h"
 #include "lib/operation.h"
@@ -44,7 +45,7 @@ static void change_name(const char* op, char* dst)
 
 void operation_get_name(const char* left_type, const char* op, const char* right_type, char* dst)
 {
-    char* buffer = utils_new_string(256);
+    char buffer[256];
     change_name(op, buffer);
 
     strcpy(dst, "");
@@ -54,7 +55,6 @@ void operation_get_name(const char* left_type, const char* op, const char* right
     strcat(dst, buffer);
     strcat(dst, "_");
     strcat(dst, right_type == NULL ? "null" : right_type);
-    free(buffer);
 }
 
 void operation_plugin(const struct operation* node, const char* left, const char* right, char* dst)
@@ -72,7 +72,7 @@ void operation_plugin(const struct operation* node, const char* left, const char
 void operation_print(const struct operation_table* table)
 {
     int i = 0;
-    char* buffer = utils_new_string(128);
+    char buffer[128];
     struct operation* v;
 
     for (v = table -> map; v != NULL; v = (struct operation*)(v -> hh.next))
@@ -83,8 +83,6 @@ void operation_print(const struct operation_table* table)
         printf("%d: %s %s %s = %s %s\n", i, left_bool ? "null" : v -> left_type, v -> op, right_bool ? "null" : v -> right_type, v -> return_type, buffer);
         i++;
     }
-
-    free(buffer);
 }
 
 void operation_init(struct operation_table* table)
@@ -94,7 +92,7 @@ void operation_init(struct operation_table* table)
 
 void operation_add(struct operation_table* table, const char* left_type,  const char* op, const char* right_type, const char* return_type)
 {
-    char* signature = utils_new_string(256);
+    char signature[256];
     operation_get_name(left_type, op, right_type, signature);
 
     struct operation* v = NULL;
@@ -134,14 +132,12 @@ void operation_add(struct operation_table* table, const char* left_type,  const 
     {
         // todo error and overload
     }
-
-    free(signature);
 }
 
 void operation_add_native(struct operation_table* table, const char* left_type,  const char* op,
                           const char* c_format, const char* right_type, const char* return_type)
 {
-    char* signature = utils_new_string(256);
+    char signature[256];
     operation_get_name(left_type, op, right_type, signature);
 
     struct operation* v = NULL;
@@ -183,8 +179,6 @@ void operation_add_native(struct operation_table* table, const char* left_type, 
     {
         // todo error and overload
     }
-
-    free(signature);
 }
 
 void operation_clear(struct operation_table* table)
@@ -448,22 +442,20 @@ void operation_add_default(struct operation_table* dst_table)
     free(buffer3);
 }
 
-void operation_get(const struct operation_table* table, const char* left, const char* op, const char* right, struct operation* dst)
+struct operation* operation_get(const struct operation_table* table, const char* left, const char* op, const char* right)
 {
-    char* signature = utils_new_string(256);
+    char signature[256];
     operation_get_name(left, op, right, signature);
     struct operation* v = NULL;
     HASH_FIND_STR(table -> map, signature, v);
-    *dst = *v;
-    free(signature);
+    return v;
 }
 
 bool operation_contain(const struct operation_table* table, const char* left, const char* op, const char* right)
 {
-    char* signature = utils_new_string(256);
+    char signature[256];
     operation_get_name(left, op, right, signature);
     struct operation* v = NULL;
     HASH_FIND_STR(table -> map, signature, v);
-    free(signature);
     return v != NULL;
 }

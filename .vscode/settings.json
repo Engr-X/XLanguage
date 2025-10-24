@@ -35,6 +35,10 @@
         "ctype.h": "c",
         "stdarg.h": "c",
         "operation.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "expr_convert.h": "c",
+        "unistd.h": "c",
+        "windows.h": "c",
+        "time.h": "c"
     }
 }

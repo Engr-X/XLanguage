@@ -79,27 +79,24 @@ void function_add_native(struct function_table* table, const char* name, const c
 }
 
 // todo overload
-void function_get(const struct function_table* table, const char* name, const char* signature, struct function* dst)
+struct function* function_get(const struct function_table* table, const char* name, const char* signature)
 {
     struct function* v = NULL;
-    char* hash = utils_new_string(1024);
+    char hash[1024];
     get_hash(name, signature, hash);
-    HASH_FIND_STR(table->map, hash, v);
-    *dst = *v;
-    free(hash);
-    return;
+    HASH_FIND_STR(table -> map, hash, v);
+    return v;
 }
 
 void function_remove(struct function_table* table, const char* name, const char* signature)
 {
     struct function* v = NULL;
-    char* hash = utils_new_string(1024);
+    char hash[1024];
     get_hash(name, signature, hash);
-    HASH_FIND_STR(table -> map, signature, v);
+    HASH_FIND_STR(table -> map, hash, v);
     
     if (v != NULL)
     {
-        free(hash);
         free(v -> name);
         free(v -> signature);
         free(v -> return_type);
@@ -143,10 +140,9 @@ void function_clear(struct function_table* table)
 bool function_contain(const struct function_table* table, const char* name, const char* signature)
 {
     struct function* v = NULL;
-    char* hash = utils_new_string(1024);
+    char hash[1024];
     get_hash(name, signature, hash);
     HASH_FIND_STR(table -> map, hash, v);
-    free(hash);
     return v != NULL;
 }
 

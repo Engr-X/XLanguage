@@ -29,11 +29,11 @@ void variable_add(struct variable_table* table, const char* name, const char* ty
     }
 }
 
-void variable_get(const struct variable_table* table, const char* name, struct variable* dst)
+struct variable* variable_get(const struct variable_table* table, const char* name)
 {
     struct variable* v = NULL;
     HASH_FIND_STR(table -> map, name, v);
-    *dst = *v;
+    return v;
 }
 
 void variable_remove(struct variable_table* table, const char* name)
