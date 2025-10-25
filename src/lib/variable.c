@@ -15,8 +15,8 @@ void variable_add(struct variable_table* table, const char* name, const char* ty
     if (v == NULL)
     {
         v = (struct variable*)(malloc(sizeof(struct variable)));
-        v -> name = utils_new_string(MAX_X_VARIABLE_LENGTH + 1);
-        v -> type = utils_new_string(MAX_CLASS_LENGTH + 1);
+        *(v -> name) = '\0';
+        *(v -> type) = '\0'; 
 
         strcpy(v -> name, name);
         strcpy(v -> type, type);
@@ -41,8 +41,6 @@ void variable_remove(struct variable_table* table, const char* name)
     struct variable* v = NULL;
     HASH_FIND_STR(table -> map, name, v);
     HASH_DEL(table -> map, v);
-    free(v -> name);
-    free(v -> type);
     free(v);
 }
 

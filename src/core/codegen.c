@@ -18,6 +18,56 @@ enum statement_type
     OTHER_OPERATION = 7
 };
 
+typedef struct string_node
+{
+    char path[128];
+    struct string_node* next;
+} StringNode;
+
+typedef struct string_list
+{
+    struct string_node* head;
+    struct string_node* tail;
+} StringList;
+
+static void stringlist_init(struct string_list* list)
+{
+    list -> head = NULL;
+    list -> tail = NULL;
+}
+
+static void stringlist_add(struct string_list* list, const char* path)
+{
+    if (list -> head == NULL)
+    {
+        struct string_node* node = (struct string_node*)(malloc(sizeof(struct string_node)));
+        strcpy(node -> path, path);
+        node -> next = NULL;
+        list -> head = node;
+        list -> tail = node;
+    }
+    else
+    {
+        struct string_node* node = (struct string_node*)(malloc(sizeof(struct string_node)));
+        strcpy(node -> path, path);
+        node -> next = NULL;
+        list -> tail -> next = node;
+        list -> tail = node;
+    }
+}
+
+static void stringlist_clear(struct string_list* list)
+{
+    struct string_node* p = list -> head;
+
+    while (p != NULL)
+    {
+        struct string_node* temp = p;
+        p = p -> next;
+        free(temp);
+    }
+}
+
 void statement_print(struct statement_list* list)
 {
     struct statement_node* p = list -> head;
@@ -366,42 +416,26 @@ static bool is_uppercase_string(const char* c)
     return is_uppercase;
 }
 
-static void codegen_convert(const char* c_code,struct variable_table* variables,
+static void codegen_convert(struct statement_list* std_code, struct variable_table* variables,
                             struct operation_table* operations,
                             struct function_table* functions,
+                            bool is_main,
+                            char* varibale_buffer, char* expr_buffer, char* temp_buffer,
                             char* other_dst, char* pre_dst, char* main_dst)
 {
-    
-}
+    struct statement_node* p = std_code -> head;
 
-static void codegen(struct statement_list* c_code, char* other_dst, char* main_dst)
-{
-    struct variable_table* global_variables = (struct variable_table*)(malloc(sizeof(struct variable_table)));
-    struct operation_table* gloablal_operations = (struct operation_table*)(malloc(sizeof(struct operation_table)));
-    struct function_table* global_functions = (struct function_table*)(malloc(sizeof(struct function_table)));
+    struct token_stack token_stack;
+    struct token_stack postfix;
+    struct string_list list;
 
-    struct token_stack* token_stack = (struct token_stack*)(malloc(sizeof(struct token_stack)));
-    struct token_stack* postfix = (struct token_stack*)(malloc(sizeof(struct token_stack)));
-    token_init(token_stack);
-    token_init(postfix);
-    
-    variable_init(global_variables);
-    operation_init(gloablal_operations);
-    function_init(global_functions);
+    token_init(&token_stack);
+    token_init(&postfix);
+    stringlist_init(&list);
 
-    operation_add_default(gloablal_operations);
-    function_add_default(global_functions);
-    //function_print(global_functions);
-
-    struct statement_node* p = c_code -> head;
-
-    char* buffer1 = utils_new_string(2048);
-    char* buffer2 = utils_new_string(1024);
-    char* buffer3 = utils_new_string(1024);
     char type_buffer[64];
     char variable_buffer1[64];
     char variable_buffer2[64];
-    char* std_code = utils_new_string(8192);
 
     while (p != NULL)
     {
@@ -422,11 +456,11 @@ static void codegen(struct statement_list* c_code, char* other_dst, char* main_d
                 case IF:
                 {
                     // find ?
-                    const int16_t index2 = utils_code_indexof(code, "?");
+                    /*const int16_t index2 = utils_code_indexof(code, "?");
                     char* statment_p = (char*)(code);
 
                     while (utils_is_space(*statment_p))
-                        statment_p--;
+                        statment_p--;*/
 
                     break;
                 }
@@ -446,25 +480,26 @@ static void codegen(struct statement_list* c_code, char* other_dst, char* main_d
 
                     if (index == -1) // function call or operation without assignment
                     {
-                        expr_tokenize(code, token_stack);
-                        expr_to_postfix(token_stack, postfix);
-                        expr_convert(postfix, global_variables, gloablal_operations, global_functions, type_buffer, buffer1);
-                        strcat(main_dst, buffer1);
+                        expr_tokenize(code, &token_stack);
+                        expr_to_postfix(&token_stack, &postfix);
+                        expr_convert(&postfix, variables, operations, functions, type_buffer, expr_buffer);
+
+                        strcat(main_dst, expr_buffer);
                         strcat(main_dst, ";\n");
                         break;
                     }
                     else // have assignment
                     {
-                        utils_substring(code, 0, index, buffer3); // left side
-                        utils_substring(code, index + 1, strlen(code), buffer2); // right side
+                        utils_substring(code, 0, index, varibale_buffer); // left side
+                        utils_substring(code, index + 1, strlen(code), expr_buffer); // right side
 
-                        expr_tokenize(buffer2, token_stack);
-                        expr_to_postfix(token_stack, postfix);
-                        expr_convert(postfix, global_variables, gloablal_operations, global_functions, type_buffer, buffer1);
+                        expr_tokenize(expr_buffer, &token_stack);
+                        expr_to_postfix(&token_stack, &postfix);
+                        expr_convert(&postfix, variables, operations, functions, type_buffer, expr_buffer);
 
-                        get_left_right_var(buffer3, variable_buffer1, variable_buffer2);
+                        get_left_right_var(varibale_buffer, variable_buffer1, variable_buffer2);
 
-                        const bool is_defined = variable_contain(global_variables, variable_buffer1);
+                        const bool is_defined = variable_contain(variables, variable_buffer1);
 
                         if (!is_defined)
                         {
@@ -473,16 +508,14 @@ static void codegen(struct statement_list* c_code, char* other_dst, char* main_d
                             if (is_constant)
                                 strcpy(main_dst, "const ");
 
-                            variable_add(global_variables, variable_buffer1, type_buffer, is_constant);
+                            variable_add(variables, variable_buffer1, type_buffer, is_constant);
                             strcat(main_dst, type_buffer);
                             strcat(main_dst, " ");
                         }
-                        else
-
-
+                        
                         strcat(main_dst, variable_buffer1);
                         strcat(main_dst, " = ");
-                        strcat(main_dst, buffer1);
+                        strcat(main_dst, expr_buffer);
                         strcat(main_dst, ";\n");
                         break;   
                     }
@@ -495,23 +528,41 @@ static void codegen(struct statement_list* c_code, char* other_dst, char* main_d
                 }
             }
 
-            token_clear(postfix);
-            token_clear(token_stack);
-            token_init(token_stack);
-            token_init(postfix);
-        }
+            token_clear(&postfix); token_init(&postfix);
+            token_clear(&token_stack); token_init(&token_stack);
+        }   
 
         p = p -> next;
     }
+}
 
-    variable_clear(global_variables); operation_clear(gloablal_operations); function_clear(global_functions);
-    free(global_variables); free(gloablal_operations); free(global_functions);
-    free(token_stack); free(postfix);
+void codegen(struct statement_list* c_code, char* other_dst, char* main_dst)
+{
+    struct variable_table* global_variables = (struct variable_table*)(malloc(sizeof(struct variable_table)));
+    struct operation_table* gloablal_operations = (struct operation_table*)(malloc(sizeof(struct operation_table)));
+    struct function_table* global_functions = (struct function_table*)(malloc(sizeof(struct function_table)));
 
+    variable_init(global_variables);
+    operation_init(gloablal_operations);
+    function_init(global_functions);
+
+    operation_add_default(gloablal_operations);
+    function_add_default(global_functions);
+    //function_print(global_functions);
+
+    char buffer1[1024];
+    char buffer2[2048];
+    char buffer3[2048];
+    char* std_code = utils_new_string(8192);
+
+    codegen_convert(c_code, global_variables, gloablal_operations, global_functions, true, buffer1, buffer2, buffer3, other_dst, NULL, main_dst);
+
+
+    variable_clear(global_variables); free(global_variables);
+    operation_clear(gloablal_operations); free(gloablal_operations);
+    function_clear(global_functions); free(global_functions);
+    
     free(std_code);
-    free(buffer1);
-    free(buffer2);
-    free(buffer3);
 }
 
 void codegen_generate_c_code(const char* x_code, char* dst)
@@ -529,15 +580,15 @@ void codegen_generate_c_code(const char* x_code, char* dst)
     strcat(dst, "#include <native_std.h>\n");
     strcat(dst, "#include <native_constants.h>\n\n");
 
-    struct statement_list* statements = (struct statement_list*)(malloc(sizeof(struct statement_list)));
-    statement_init(statements);
-    codegen_separate(x_code, statements, true, true);
+    struct statement_list statements;
+    statement_init(&statements);
+    codegen_separate(x_code, &statements, true, true);
     //statement_print(statements);
 
     char* other_dst = utils_new_string(65536);
     char* main_dst = utils_new_string(65536);
 
-    codegen(statements, other_dst, main_dst);
+    codegen(&statements, other_dst, main_dst);
 
     strcat(dst, other_dst);
     strcat(dst, "int main(int argc, char const *argv[])\n{\n");
@@ -548,9 +599,8 @@ void codegen_generate_c_code(const char* x_code, char* dst)
 
     strcat(dst, "return 0;\n}");
 
-    statement_clear(statements);
-    
-    free(statements);
+    statement_clear(&statements);
+
     free(other_dst);
     free(main_dst);
 }

@@ -469,25 +469,17 @@ void expr_tokenize(const char* std_code, struct token_stack* dst)
 
 void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
 {
-    char* buffer = utils_new_string(256);
-    struct token_stack* op = (struct token_stack*)(malloc(sizeof(struct token_stack)));
-    struct token_node* temp = (struct token_node*)(malloc(sizeof(struct token_node)));
-
-    temp -> token = NULL;
-    temp -> raw_type = 0;
-    temp -> priority = 0;
-    temp -> next = NULL;
-    temp -> prev = NULL;
-
-    token_init(op);
-
     if (infix -> head == NULL)
         return;
 
+    bool check_tail = true;
+    char buffer[256];
+    struct token_stack op; token_init(&op);
     struct token_node* p = infix -> head;
 
     while (p != NULL)
     {
+        check_tail = true;
         strcpy(buffer, p -> token);
 
         switch (p -> raw_type)
@@ -498,7 +490,7 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
             case TT_FUNCTION:
             {
                 const bool is_number = (p -> raw_type == TT_CONSTANT || p -> raw_type == TT_VARIABLE);
-                token_add(is_number ? postfix : op, p -> token, p -> raw_type, p -> priority);
+                token_add(is_number ? postfix : &op, p -> token, p -> raw_type, p -> priority);
 
                 // detect functions args, func() has no, but func(2) has at leaset one
                 if (p -> raw_type == TT_ARRAY || p -> raw_type == TT_FUNCTION)
@@ -512,17 +504,11 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
                         const char* token = p -> next -> next -> token;
 
                         if (strcmp(token, ")") != 0 && strcmp(token,  "]") != 0)
-                            op -> tail -> params_count = 1;
+                            op.tail -> params_count = 1;
                     }
                 }
                 
                 // self add need push first and here is to push sign
-                if (is_number && temp -> next == (void*)(1))
-                {
-                    token_add(postfix, temp -> token, temp -> raw_type, temp -> priority);
-                    temp -> next = NULL; temp -> prev = NULL;
-                }
-
                 break;
             }
             
@@ -531,53 +517,47 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
             case TT_OPERATION:
             {
                 if (*buffer == '(' || *buffer == '[')
-                    token_add(op, p -> token, p -> raw_type, p -> priority);
+                    token_add(&op, p -> token, p -> raw_type, p -> priority);
                 else if (*buffer == ')' || *buffer == ']')
                 {
                     //need pop （ and [ too!
-                    pop_ops_until(op, postfix, *buffer, true);
+                    pop_ops_until(&op, postfix, *buffer, true);
 
                     // pop arr_name or function_name(f g)
-                    if (op -> tail != NULL && (op -> tail -> raw_type == TT_ARRAY || op -> tail -> raw_type == TT_FUNCTION))
+                    if (op.tail != NULL && (op.tail -> raw_type == TT_ARRAY || op.tail -> raw_type == TT_FUNCTION))
                     {
-                        struct token_node* temp = token_pop(op);
-                        token_add(postfix, temp -> token, temp -> raw_type, temp -> priority);
-                        postfix -> tail -> params_count = temp -> params_count;
-                        free(temp -> token);
-                        free(temp);
+                        struct token_node* pop_one = token_pop(&op);
+                        token_add(postfix, pop_one -> token, pop_one -> raw_type, pop_one -> priority);
+                        postfix -> tail -> params_count = pop_one -> params_count;
+                        free(pop_one -> token);
+                        free(pop_one);
                     }
                 }
                 else
                 {
-                    if (O_POSITIVE <= p -> raw_type && p -> raw_type <= O_SELF_DECREASE) // refer to positive negtive
+                    if (O_POSITIVE <= p -> priority && p -> priority <= O_SELF_DECREASE) // refer to positive negtive
                     {
-                        if (temp != NULL)
-                        {
-                            printf_err("bug error for ++ --and + - ");
-                            return;
-                        }
-
-                        memcpy(temp, p, sizeof(struct token_node));
-                        temp -> next = (void*)(1); temp -> prev = (void*)(1);
+                        check_tail = false;
+                        token_add(&op, p -> token, p -> raw_type, p -> priority);
                     }
-                    else if (op -> head == NULL ||
-                            *op -> tail -> token == '(' || *op -> tail -> token == '[' || *op -> tail -> token == '.' || 
-                            p -> priority > op -> tail -> priority) // when op is empty or current priority greater than
-                        token_add(op, p -> token, p -> raw_type, p -> priority);
+                    else if (op.head == NULL ||
+                            *(op.tail -> token) == '(' || *(op.tail -> token) == '[' || *(op.tail -> token) == '.' || 
+                            p -> priority > op.tail -> priority) // when op is empty or current priority greater than
+                        token_add(&op, p -> token, p -> raw_type, p -> priority);
                     else
                     {
-                        while (op -> tail != NULL && p -> priority <= op -> tail -> priority)
+                        while (op.tail != NULL && p -> priority <= op.tail -> priority)
                         {
-                            if (*op -> tail -> token == '(' || *op -> tail -> token == '[')
+                            if (*(op.tail -> token) == '(' || *(op.tail -> token) == '[')
                                 break;
 
-                            struct token_node* pop_one = token_pop(op);
+                            struct token_node* pop_one = token_pop(&op);
                             token_add(postfix, pop_one -> token, pop_one -> raw_type, pop_one -> priority);
                             free(pop_one -> token);
                             free(pop_one);
                         }
 
-                        token_add(op, p -> token, p -> raw_type, p -> priority);
+                        token_add(&op, p -> token, p -> raw_type, p -> priority);
                     }
                         
                     break;
@@ -589,7 +569,7 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
             case TT_DOT:
             {
                 //last must is ( or [
-                struct token_node* tail = op -> tail;
+                struct token_node* tail = op.tail;
 
                 if (tail == NULL)
                 {
@@ -604,9 +584,9 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
                 struct token_node* tail_prev = tail -> prev; 
 
                 if (tail_prev -> raw_type != TT_FUNCTION && tail_prev -> raw_type != TT_ARRAY)
-                    pop_ops_until(op, postfix, -1, false);
+                    pop_ops_until(&op, postfix, -1, false);
 
-                op -> tail -> prev -> params_count++;
+                op.tail -> prev -> params_count++;
                 
                 break;
             }
@@ -614,6 +594,23 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
             {
                 printf_err("error func_tran_to_postfix");
                 break;
+            }
+        }
+
+        if (check_tail)
+        {
+            // check op stack if there is <+> <-> <++> <--> cast is the head of stack pop
+            struct token_node* op_tail = op.tail;
+            
+            if (op_tail != NULL)
+            {
+                if ((O_POSITIVE <= op_tail -> priority && op_tail -> priority < O_SELF_DECREASE) || op_tail -> raw_type == TT_CAST)
+                {
+                    token_pop(&op);
+                    token_add(postfix, op_tail -> token, op_tail -> raw_type, op_tail -> priority);
+                    free(op_tail -> token);
+                    free(op_tail);
+                }
             }
         }
 
@@ -626,12 +623,9 @@ void expr_to_postfix(struct token_stack* infix, struct token_stack* postfix)
         p = p -> next;
     }
 
-    pop_ops_until(op, postfix, -1, false);
+    pop_ops_until(&op, postfix, -1, false);
 
-    token_clear(op);
-    free(op);
-    free(buffer);
-    free(temp);
+    token_clear(&op);
 }
 
 // warning direct prority
@@ -668,7 +662,6 @@ static void classify_token(struct token_stack* postfix, const struct variable_ta
             case TT_EXPRESSION:
             case TT_CONSTANT:
             {
-                p -> type = utils_new_string(16);
                 variable_constant_type(p -> token, p -> type);
                 break;
             }
@@ -682,7 +675,6 @@ static void classify_token(struct token_stack* postfix, const struct variable_ta
                 else
                 {
                     const struct variable* var = variable_get(variable_table, p -> token);
-                    p -> type = utils_new_string(16);
                     strcpy(p -> type, var -> type);
                 }
 
@@ -713,7 +705,6 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
     char* buffer = utils_new_string(65535);
     struct token_node** arguments = (struct token_node**)(malloc(sizeof(struct token_node*) * 128));
     classify_token(postfix, variable_table);
-    //token_print(postfix);
 
     struct operation* op;
     struct token_stack* result_stack = (struct token_stack*)(malloc(sizeof(struct token_stack)));
@@ -731,7 +722,6 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
             case TT_VARIABLE:
             {
                 token_add(result_stack, p -> token, p -> raw_type, p -> priority);
-                result_stack -> tail -> type = utils_new_string(32);
                 strcpy(result_stack -> tail -> type, p -> type);
                 break;
             }
@@ -745,13 +735,13 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
                     op = operation_get(operation_table, NULL, p -> token, one -> type);
                     operation_plugin(op, NULL, one -> token, buffer);
 
-                    token_add(result_stack, buffer, TT_CONSTANT, -1);
-                    result_stack -> tail -> type = utils_new_string(32);
+                    token_add(result_stack, buffer, TT_EXPRESSION, -1);
                     strcpy(result_stack -> tail -> type, op -> return_type);
                 }
                 else
                     printf_err("cannot cast from: %s to: %s", one -> type, p -> token);
 
+                free(one -> token); free(one);
                 break;
             }
 
@@ -767,15 +757,14 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
                         op = operation_get(operation_table, first -> type, p -> token, second -> type);
                         operation_plugin(op, first -> token, second -> token, buffer);
 
-                        token_add(result_stack, buffer, TT_CONSTANT, -1);
-                        result_stack -> tail -> type = utils_new_string(32);
+                        token_add(result_stack, buffer, TT_EXPRESSION, -1);
                         strcpy(result_stack -> tail -> type, op -> return_type);
                     }
                     else
                         printf_err("cannot find operation: %s %s %s", second -> type, p -> token, first -> type);
 
-                    token_free(first); free(first);
-                    token_free(second); free(second);
+                    free(first -> token); free(first);
+                    free(second -> token); free(second);
                 }
                 else if (p -> params_count == 1)
                 {
@@ -793,15 +782,13 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
                         operation_plugin(op, first, second, buffer);
 
                         token_add(result_stack, buffer, TT_CONSTANT, -1);
-                        result_stack -> tail -> type = utils_new_string(32);
                         strcpy(result_stack -> tail -> type, op -> return_type);
                     }
                     else
                         printf_err("cannot find operation: %s %s %s", first_type == NULL ? "null" : first_type,
                                     p -> token, second_type == NULL ? "null" : second_type);
                     
-                    token_free(one);
-                    free(one);
+                    free(one -> token); free(one);
                 }
 
                 break;
@@ -835,14 +822,12 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
                         if (i > 0)
                             strcat(buffer, ", ");
 
-                        token_free(arguments[i]);
-                        free(arguments[i]);
+                        free(arguments[i] -> token); free(arguments[i]);
                     }
 
                     strcat(buffer, ")");
 
-                    token_add(result_stack, buffer, TT_CONSTANT, -1);
-                    result_stack -> tail -> type = utils_new_string(32);
+                    token_add(result_stack, buffer, TT_EXPRESSION, -1);
                     strcpy(result_stack -> tail -> type, func -> return_type);
                 }
                 else
@@ -856,14 +841,14 @@ void expr_convert(struct token_stack* postfix, const struct variable_table* vari
         }
 
 
-        token_free(p);
-        free(p);
+        free(p -> token); free(p);
     }
     
     strcpy(return_type, result_stack -> head -> type);
     strcpy(c_code, result_stack -> head -> token);
-    token_clear(result_stack);
-    free(result_stack);
+
+    token_clear(result_stack); free(result_stack);
+    
     free(buffer);
     free(arguments);
 }

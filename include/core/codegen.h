@@ -20,5 +20,6 @@ typedef struct statement_list
 void statement_print(struct statement_list* list);
 void codegen_separate(const char* x_code, struct statement_list* dst, bool allow_class, bool allow_function);
 void codegen_generate_c_code(const char* c_code, char* dst);
+void codegen(struct statement_list* c_code, char* other_dst, char* main_dst);
 
 #endif

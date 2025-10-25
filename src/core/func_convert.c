@@ -49,7 +49,7 @@ void token_add(struct token_stack* stack, char* token, uint8_t raw_type, uint8_t
 {
     struct token_node* node = (struct token_node*)(malloc(sizeof(struct token_node)));
     node -> token = utils_new_string(strlen(token) + 16);
-    node -> type = NULL;
+    *(node -> type) = '\0';
     node -> raw_type = raw_type;
     node -> priority = priority;
     node -> params_count = 0;
@@ -79,20 +79,12 @@ void token_print(struct token_stack* stack)
     while (p != NULL)
     {
         token_type_to_string(p -> raw_type, buffer);
-        printf("{token: %s}, {type: %s-%s}, {priority: %d}, {params: %d}\n",
-                p -> token, buffer, p -> type == NULL ? "null" : p -> type, p -> priority, p -> params_count);
+        printf("%p: {token: %s}, {type: %s-%s}, {priority: %d}, {params: %d}\n", p,
+                p -> token, buffer, strlen(p -> type) == 0 ? "null" : p -> type, p -> priority, p -> params_count);
         p = p -> next;
     }
 
     free(buffer);
-}
-
-void token_free(struct token_node* node)
-{
-    if (node -> type != NULL)
-        free(node -> type);
-
-    free(node -> token);
 }
 
 void token_clear(struct token_stack* stack)
@@ -101,9 +93,6 @@ void token_clear(struct token_stack* stack)
 
     while (p != NULL)
     {
-        if (p -> type != NULL)
-            free(p -> type);
-
         free(p -> token);
         struct token_node* temp = p;
         p = p -> next;

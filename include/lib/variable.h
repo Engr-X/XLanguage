@@ -13,8 +13,8 @@
 
 typedef struct variable
 {
-    char* name;
-    char* type; // +1 for '\0'
+    char name[64];
+    char type[32];
     bool is_const;
 
     UT_hash_handle hh;
@@ -31,6 +31,7 @@ struct variable* variable_get(const struct variable_table* table, const char* na
 void variable_remove(struct variable_table* table, const char* name);
 void variable_print(const struct variable_table* table);
 void variable_clear(struct variable_table* table);
+void variable_copy(const struct variable_table* table, struct variable_table* dst);
 bool variable_contain(const struct variable_table* table, const char* name);
 
 

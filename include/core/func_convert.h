@@ -59,7 +59,7 @@ typedef enum operation_priority
 typedef struct token_node
 {
     char* token;
-    char* type;
+    char type[32];
 
     uint8_t raw_type;
     uint8_t priority;
@@ -78,7 +78,6 @@ void token_print(struct token_stack* stack);
 void token_init(struct token_stack* stack);
 void token_add(struct token_stack* stack, char* token, uint8_t raw_type, uint8_t priority);
 void token_clear(struct token_stack* stack);
-void token_free(struct token_node* node);
 struct token_node* token_pop(struct token_stack* stack);
 struct token_node* token_pop_front(struct token_stack* stack);
 

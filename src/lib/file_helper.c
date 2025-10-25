@@ -122,7 +122,7 @@ int where(const char* file_name, char* dst)
         return 0;
 
     // Check current directory first
-    char* cwd = utils_new_string(4096);
+    char* cwd = utils_new_string(2048);
     char* full_path = utils_new_string(4096);
 
     if (getcwd(cwd, 4096) != NULL)
@@ -136,37 +136,46 @@ int where(const char* file_name, char* dst)
             {  
                 // Use X_OK (1) for executable check; on Windows, adjust if needed (e.g., to 0 for existence)
                 strcpy(dst, full_path);
+                free(cwd);
+                free(full_path);
                 return 1;
             }
     }
 
     const char* path_env = getenv("PATH");
-    if (!path_env) return 0;
 
-    char* paths = strdup(path_env);
+    if (!path_env)
+        return 0;
+
+    char* path_env_copy = utils_new_string((strlen(path_env) + 4096) * sizeof(char));
+    strcpy(path_env_copy, path_env);
+
     char* saveptr = NULL;
-    char* token = strtok_r(paths, (char[]){PATH_SEPARATOR, 0}, &saveptr);
+    char* token = strtok_r(path_env_copy, (char[]){PATH_SEPARATOR, 0}, &saveptr);
 
     while (token)
     {
         #ifdef _WIN32
-                sprintf(full_path, "%s%c%s.exe", token, DIR_SEPARATOR, file_name);
+            sprintf(full_path, "%s%c%s.exe", token, DIR_SEPARATOR, file_name);
         #else
-                sprintf(full_path, "%s%c%s", token, DIR_SEPARATOR, file_name);
+            sprintf(full_path, "%s%c%s", token, DIR_SEPARATOR, file_name);
         #endif
 
         if (access(full_path, X_OK) == 0)
         {
             strcpy(dst, full_path);
-            free(paths);
+            free(path_env_copy);
+            free(cwd);
+            free(full_path);
             return 1;
         }
 
-        token = strtok_r(NULL, (char[]){PATH_SEPARATOR, 0}, &saveptr);
+        token = strtok_r(NULL, (char[]) {PATH_SEPARATOR, 0}, &saveptr);
     }
 
-    free(paths);
+    free(path_env_copy);
     free(cwd);
     free(full_path);
+
     return 0;
 }

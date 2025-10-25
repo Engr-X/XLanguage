@@ -82,7 +82,7 @@ void translate_test(const char* code)
     char* return_type = utils_new_string(32);
     char* c_code = utils_new_string(65535);
     
-    struct token_stack* token_stack = (struct token_stack*)(malloc(sizeof(struct token_stack)));
+    /*struct token_stack* token_stack = (struct token_stack*)(malloc(sizeof(struct token_stack)));
     struct token_stack* postfix = (struct token_stack*)(malloc(sizeof(struct token_stack)));
     struct operation_table* operation_table = (struct operation_table*)(malloc(sizeof(struct operation_table)));
     struct function_table* function_table = (struct function_table*)(malloc(sizeof(struct function_table)));
@@ -111,7 +111,8 @@ void translate_test(const char* code)
     free(function_table);
 
     free(token_stack);
-    free(postfix);
+    free(postfix);*/
+    codegen_generate_c_code(code, c_code);
 
     free(c_code);
     free(return_type);
@@ -138,16 +139,16 @@ int main(int argc, char const *argv[])
 {
     puts("start test");
 
-    char* code = malloc(2048);
+    char* code = utils_new_string(2048);
+    strcpy(code, "int 3\n");
 
     //codegen_separate(code, )
 
     //function_test();
-    //strcpy(code, "println(true !^ false | true)\n");
-    operator_test();
+    //operator_test();
     //function_test()
     //postfix_test(code);
-    //translate_test(code);
+    translate_test(code);
     //translate_test(code);
     free(code);
     return 0;
