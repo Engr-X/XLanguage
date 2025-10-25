@@ -124,13 +124,8 @@ void operator_test()
     operation_add_default(&dst_table);
 
     struct operation* op;
-    op = operation_get(&dst_table, "bool", "!^", "bool");
+    printf("conain: %d\n", operation_contain(&dst_table, "double", "^", "double"));
 
-    char c_format[64];
-    operation_plugin(op, "true", "false", c_format);
-    printf("c_format: %s\n", c_format);
-
-    //operation_print(&dst_table);
     operation_clear(&dst_table);
 }
 
@@ -139,25 +134,17 @@ inline static void format_dual_arity1(const char* op, char* c_format)
     sprintf(c_format, "%%s %s %%s", op);
 }
 
-void getGCC()
-{
-    char gcc_path[1024];
-    int found = where("xlang", gcc_path);
-    if (found)
-        printf("GCC found at: %s\n", gcc_path);
-    else
-        printf("GCC not found in PATH.\n");
-}
-
 int main(int argc, char const *argv[])
 {
     puts("start test");
-    getGCC();
 
     char* code = malloc(2048);
+
+    //codegen_separate(code, )
+
     //function_test();
-    strcpy(code, "println(true !^ false | true)\n");
-    //operator_test();
+    //strcpy(code, "println(true !^ false | true)\n");
+    operator_test();
     //function_test()
     //postfix_test(code);
     //translate_test(code);

@@ -53,7 +53,7 @@ typedef enum operation_priority
     O_SELF_INCREASE = 12,       // c++
     O_SELF_DECREASE = 12,       // c--
     O_BRACKET = 13,             // ()   
-    O_QUATATION = 13            // []   
+    O_SQUARE = 13            // []   
 } OperationPriority;
 
 typedef struct token_node

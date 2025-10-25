@@ -20,7 +20,7 @@ static const char* OP_NAME[OP_SIZE] =
 {
     "equal", "not_equal", "greater", "less", "greater_equal", "less_equal", "bits_left_shift", "bits_right_shift", "bits_or", "bits_xor",
     "bits_xnor", "bits_and", "add", "subtract", "multiply", "divide", "mod", "mod", "pow", "positive", "negtive",
-    "bits_reverse", "cast", "increase_self", "decrease_self", "self_increase", "self_decrease", "bracket", "quatation"
+    "bits_reverse", "cast", "increase_self", "decrease_self", "self_increase", "self_decrease", "bracket", "square"
 };
 
 static void try_free(void* memory)

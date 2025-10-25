@@ -145,10 +145,8 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
     char* buffer = utils_new_string(65535);
 
     uint16_t bracket_count = 0;
-    uint16_t quatation_count = 0;
+    uint16_t square_count = 0;
     uint16_t brace_count = 0;
-    bool double_quote_open = false;
-    bool single_quote_open = false;
 
     while (*p != '\0')
     {
@@ -157,10 +155,8 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
 
         prev_p = p;
         bracket_count = 0;
-        quatation_count = 0;
+        square_count = 0;
         brace_count = 0;
-        double_quote_open = false;
-        single_quote_open = false;
 
         // find first \n
         while (true)
@@ -168,29 +164,55 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
             if (*p == '\0' || *p == ';')
                 break;
 
-            if (brace_count == 0 && bracket_count == 0 && quatation_count == 0
-                && !double_quote_open && !single_quote_open && *p == '\n')
-                break;
+            if (*p == '\\')
+            {
+                p += 2;
+                continue;
+            }
+
+            if (*p == '"')
+            {
+                p++;
+
+                while (*p != '\0' && *p != '"')
+                {
+                    if (*p == '\\') {p += 2; continue;}
+                    p++;
+                }
+            }
+
+            if (*p == '\'')
+            {
+                p++;
+
+                while (*p != '\0' && *p != '\'')
+                {
+                    if (*p == '\\') {p += 2; continue;}
+                    p++;
+                }
+            }
+
+            if (*p == '"' || *p == '\'') {p++;  continue;}
+            if (brace_count == 0 && bracket_count == 0 && square_count == 0 && *p == '\n') break;
 
             switch (*p)
             {
                 case '(': {bracket_count++; break;}
                 case ')': {bracket_count--; break;}
-                case '[': {quatation_count++; break;}
-                case ']': {quatation_count--; break;}
+                case '[': {square_count++; break;}
+                case ']': {square_count--; break;}
                 case '{': {brace_count++; break;}
                 case '}': {brace_count--; break;}
-                case '\'': {single_quote_open = !single_quote_open; break;}
-                case '"': {double_quote_open = !double_quote_open; break;}
             }
 
             p++;
         }
 
-        if (prev_p == p)
-            continue;
+        if (*p == ';') p++;
+        if (prev_p == p) continue;
 
         utils_substring(prev_p, 0, p - prev_p, buffer);
+        //puts(buffer);
 
         const bool is_class_def = utils_code_contain(buffer, "class");
         const bool is_func_def = utils_code_contain(buffer, "func");
@@ -252,7 +274,7 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
             prev_p = p;
             statement_add(dst, buffer, loop ? LOOP : ITERATION);   
         } // for statement
-        else
+        else // other
         {
             utils_substring(prev_p, 0, p - prev_p, buffer);
             prev_p = p;
@@ -261,6 +283,68 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
     }
 
     free(buffer);
+}
+
+static int get_assignment(const char* code)
+{
+    int16_t index = -1;
+    
+    // find first '=', but not "==". And it is not in "String" and 'char'
+    for (char* iter = (char*)(code); *iter != '\0'; iter++)
+    {
+        if (*iter == '"')
+        {
+            iter++; // 跳过初始 "
+            while (*iter != '\0')
+            {
+                if (*iter == '\\' && *(iter + 1) != '\0') iter++;
+                else if (*iter == '"') break; // 找到真正的结束 "
+                    iter++;
+            }
+        }
+        else if (*iter == '\'')
+        {
+            iter++;
+
+            while (*iter != '\0')
+            {
+                if (*iter == '\\' && *(iter+1) != '\0') iter++;
+                else if (*iter == '\'') break;
+                    iter++;
+            }
+        }
+        else if (*iter == '=')
+        {
+            if (*(iter + 1) == '=')
+            {
+                iter++;
+                continue;
+            }
+            else
+            {
+                index = iter - code;
+                break;
+            }
+        }
+    }
+
+    return index;
+}
+
+static void get_left_right_var(const char* line, char* left_buffer, char* right_buffer)
+{
+    char* p = (char*)(line);
+
+    while (*p != '\0' && utils_is_space(*p))
+        p++;
+
+    const char* start = p;
+
+    while (*p != '\0' && (utils_is_letter(*p) || utils_is_digit(*p) || *p == '_' || *p == '.'))
+        p++;
+    
+    utils_substring(start, 0, p - start, left_buffer);
+    utils_substring(p, 0, strlen(p), right_buffer);
 }
 
 static void codegen_convert(struct statement_list* c_code, char* other_dst, char* main_dst)
@@ -284,9 +368,12 @@ static void codegen_convert(struct statement_list* c_code, char* other_dst, char
 
     struct statement_node* p = c_code -> head;
 
-    char* buffer1 = utils_new_string(8192);
-    char* buffer2 = utils_new_string(512);
-    char* buffer3 = utils_new_string(64);
+    char* buffer1 = utils_new_string(2048);
+    char* buffer2 = utils_new_string(1024);
+    char* buffer3 = utils_new_string(1024);
+    char type_buffer[64];
+    char variable_buffer1[64];
+    char variable_buffer2[64];
     char* std_code = utils_new_string(8192);
 
     while (p != NULL)
@@ -317,58 +404,44 @@ static void codegen_convert(struct statement_list* c_code, char* other_dst, char
 
                 case OTHER_OPERATION:
                 {
-                    int16_t index = -1;
-                    // find first '=', but not "==". And it is not in "String" and 'char'
-                    for (char* iter = (char*)(code); *iter != '\0'; iter++)
-                    {
-                        if (*iter == '"')
-                        {
-                            iter++; // 跳过初始 "
-                            while (*iter != '\0')
-                            {
-                                if (*iter == '\\' && *(iter + 1) != '\0') iter++;
-                                else if (*iter == '"') break; // 找到真正的结束 "
-                                iter++;
-                            }
-                        }
-                        else if (*iter == '\'')
-                        {
-                            iter++;
-                            while (*iter != '\0')
-                            {
-                                if (*iter == '\\' && *(iter+1) != '\0') iter++;
-                                else if (*iter == '\'') break;
-                                iter++;
-                            }
-                        }
-                        else if (*iter == '=')
-                        {
-                            if (*(iter + 1) == '=')
-                            {
-                                iter++;
-                                continue;
-                            }
-                            else
-                            {
-                                index = iter - code;
-                                break;
-                            }
-                        }
-                    }
+                    const int16_t index = get_assignment(code);
 
                     if (index == -1) // function call or operation without assignment
                     {
                         expr_tokenize(code, token_stack);
                         expr_to_postfix(token_stack, postfix);
-                        expr_convert(postfix, global_variables, gloablal_operations, global_functions, buffer3, buffer1);
+                        expr_convert(postfix, global_variables, gloablal_operations, global_functions, type_buffer, buffer1);
                         strcat(main_dst, buffer1);
                         strcat(main_dst, ";\n");
                         break;
                     }
                     else // have assignment
                     {
-                        utils_substring(code, 0, index, buffer2); // left side
-                        utils_substring(code, index + 1, strlen(code) - index, buffer1); // right side
+                        utils_substring(code, 0, index, buffer3); // left side
+                        utils_substring(code, index + 1, strlen(code), buffer2); // right side
+
+                        expr_tokenize(buffer2, token_stack);
+                        expr_to_postfix(token_stack, postfix);
+                        expr_convert(postfix, global_variables, gloablal_operations, global_functions, type_buffer, buffer1);
+
+                        get_left_right_var(buffer3, variable_buffer1, variable_buffer2);
+
+                        if (variable_contain(global_variables, variable_buffer1))
+                        {
+                            puts("change assignment");
+                        }
+                        else
+                        {
+                            puts("new assignment");
+                            variable_add(global_variables, variable_buffer1, type_buffer);
+                            strcat(main_dst, type_buffer);
+                            strcat(main_dst, " ");
+                            strcat(main_dst, variable_buffer1);
+                            strcat(main_dst, " = ");
+                            strcat(main_dst, buffer1);
+                            strcat(main_dst, ";\n");
+                        }
+
                         break;   
                     }
                 }

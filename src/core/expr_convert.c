@@ -392,7 +392,7 @@ void expr_tokenize(const char* std_code, struct token_stack* dst)
                 const bool is_dot = c == ',';
                 const bool is_bracket = c == '(' || c == ')';
                 buffer[0] = c, buffer[1] = '\0';
-                token_add(dst, buffer, is_dot ? TT_DOT : TT_OPERATION, is_dot ? -1 : (is_bracket ? O_BRACKET : O_QUATATION));
+                token_add(dst, buffer, is_dot ? TT_DOT : TT_OPERATION, is_dot ? -1 : (is_bracket ? O_BRACKET : O_SQUARE));
                 break;
             }
 
