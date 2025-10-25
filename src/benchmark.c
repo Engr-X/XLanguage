@@ -1,0 +1,12 @@
+/*
+fannkuch-redux
+n-body
+spectral-norm
+mandelbrot
+pidigits
+regex-redux
+fasta
+k-nucleotide
+reverse-complement
+binary-trees
+*/

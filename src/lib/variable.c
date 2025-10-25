@@ -6,7 +6,7 @@ void variable_init(struct variable_table* table)
     table -> map = NULL;
 }
 
-void variable_add(struct variable_table* table, const char* name, const char* type)
+void variable_add(struct variable_table* table, const char* name, const char* type, bool is_const)
 {
     struct variable* v = NULL;
 

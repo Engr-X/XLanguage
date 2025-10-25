@@ -119,6 +119,7 @@ int main(int argc, char const *argv[])
         if (index != (uint64_t)(-1))
         {
             file_read(arg, "UTF-8", input);
+            printf("convert file: %s\n", arg);
             codegen_generate_c_code(input, c_code);
             arg[index + 1] = 'c'; 
             file_add(file_list, arg);
@@ -149,8 +150,9 @@ int main(int argc, char const *argv[])
     #endif
         strcat(command, lib_cmd);
 
-    printf("run: %s\n", command);
+    //printf("run: %s\n", command);
     utils_cmd(command);
+    printf("compile file end!\n");
 
     //delete .c
     struct file_node* p = file_list -> head;

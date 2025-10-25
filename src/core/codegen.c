@@ -347,7 +347,34 @@ static void get_left_right_var(const char* line, char* left_buffer, char* right_
     utils_substring(p, 0, strlen(p), right_buffer);
 }
 
-static void codegen_convert(struct statement_list* c_code, char* other_dst, char* main_dst)
+static bool is_uppercase_string(const char* c)
+{
+    char* p = (char*)(c);
+    bool is_uppercase = true;
+
+    while (*p != '\0')
+    {
+        if (!utils_is_uppercase(*p) && *p != '_')
+        {
+            is_uppercase = false;
+            break;
+        }
+
+        p++;
+    }
+
+    return is_uppercase;
+}
+
+static void codegen_convert(const char* c_code,struct variable_table* variables,
+                            struct operation_table* operations,
+                            struct function_table* functions,
+                            char* other_dst, char* pre_dst, char* main_dst)
+{
+    
+}
+
+static void codegen(struct statement_list* c_code, char* other_dst, char* main_dst)
 {
     struct variable_table* global_variables = (struct variable_table*)(malloc(sizeof(struct variable_table)));
     struct operation_table* gloablal_operations = (struct operation_table*)(malloc(sizeof(struct operation_table)));
@@ -393,6 +420,17 @@ static void codegen_convert(struct statement_list* c_code, char* other_dst, char
             switch (p -> type)
             {
                 case IF:
+                {
+                    // find ?
+                    const int16_t index2 = utils_code_indexof(code, "?");
+                    char* statment_p = (char*)(code);
+
+                    while (utils_is_space(*statment_p))
+                        statment_p--;
+
+                    break;
+                }
+
                 case IF_ELSE:
                 case SWITCH_CASE:
                 case LOOP:
@@ -426,22 +464,26 @@ static void codegen_convert(struct statement_list* c_code, char* other_dst, char
 
                         get_left_right_var(buffer3, variable_buffer1, variable_buffer2);
 
-                        if (variable_contain(global_variables, variable_buffer1))
+                        const bool is_defined = variable_contain(global_variables, variable_buffer1);
+
+                        if (!is_defined)
                         {
-                            puts("change assignment");
-                        }
-                        else
-                        {
-                            puts("new assignment");
-                            variable_add(global_variables, variable_buffer1, type_buffer);
+                            const bool is_constant = is_uppercase_string(variable_buffer1);
+
+                            if (is_constant)
+                                strcpy(main_dst, "const ");
+
+                            variable_add(global_variables, variable_buffer1, type_buffer, is_constant);
                             strcat(main_dst, type_buffer);
                             strcat(main_dst, " ");
-                            strcat(main_dst, variable_buffer1);
-                            strcat(main_dst, " = ");
-                            strcat(main_dst, buffer1);
-                            strcat(main_dst, ";\n");
                         }
+                        else
 
+
+                        strcat(main_dst, variable_buffer1);
+                        strcat(main_dst, " = ");
+                        strcat(main_dst, buffer1);
+                        strcat(main_dst, ";\n");
                         break;   
                     }
                 }
@@ -490,14 +532,12 @@ void codegen_generate_c_code(const char* x_code, char* dst)
     struct statement_list* statements = (struct statement_list*)(malloc(sizeof(struct statement_list)));
     statement_init(statements);
     codegen_separate(x_code, statements, true, true);
-    statement_print(statements);
+    //statement_print(statements);
 
-    char* other_dst = (char*)(malloc(65536 * sizeof(char)));
-    char* main_dst = (char*)(malloc(65536 * sizeof(char)));
-    *other_dst = '\0';
-    *main_dst = '\0';
+    char* other_dst = utils_new_string(65536);
+    char* main_dst = utils_new_string(65536);
 
-    codegen_convert(statements, other_dst, main_dst);
+    codegen(statements, other_dst, main_dst);
 
     strcat(dst, other_dst);
     strcat(dst, "int main(int argc, char const *argv[])\n{\n");

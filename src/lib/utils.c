@@ -153,7 +153,6 @@ uint64_t utils_code_indexof(const char* std_code, const char* str)
 
     for (uint64_t i = 0; i < len_code; i++)
     {
-
         if (std_code[i] == '"')
         {
             i++;

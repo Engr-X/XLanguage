@@ -15,6 +15,7 @@ typedef struct variable
 {
     char* name;
     char* type; // +1 for '\0'
+    bool is_const;
 
     UT_hash_handle hh;
 } Variable;
@@ -25,7 +26,7 @@ typedef struct variable_table
 } VariableTable;
 
 void variable_init(struct variable_table* table);
-void variable_add(struct variable_table* table, const char* name, const char* type);
+void variable_add(struct variable_table* table, const char* name, const char* type, bool is_const);
 struct variable* variable_get(const struct variable_table* table, const char* name);
 void variable_remove(struct variable_table* table, const char* name);
 void variable_print(const struct variable_table* table);
