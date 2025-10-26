@@ -39,6 +39,9 @@
         "expr_convert.h": "c",
         "unistd.h": "c",
         "windows.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "test.h": "c",
+        "main.h": "c",
+        "expr_evaluator.h": "c"
     }
 }

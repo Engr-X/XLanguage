@@ -148,8 +148,7 @@ bool function_contain(const struct function_table* table, const char* name, cons
 
 void function_add_default(struct function_table* dst_table)
 {
-    function_add_native(dst_table, "newline", "__native_xl_newline", "", "void");
-
+    // x function -> c function -> parameters_type -> return_type
     function_add_native(dst_table, "print", "__native_xl_print_bool", "_bool", "void");
     function_add_native(dst_table, "print", "putchar", "_char", "void");
     function_add_native(dst_table, "print", "__native_xl_print_byte", "_byte", "void");
@@ -169,6 +168,9 @@ void function_add_default(struct function_table* dst_table)
     function_add_native(dst_table, "println", "__native_xl_println_float", "_float", "void");
     function_add_native(dst_table, "println", "__native_xl_println_double", "_double", "void");
     function_add_native(dst_table, "println", "puts", "_string", "void");
+
+    // x function -> c function -> parameters_type -> return_type
+    function_add_native(dst_table, "newline", "__native_xl_newline", "", "void");
 
     function_add_native(dst_table, "max", "__native_xl_max_int", "_int_int", "int");
     function_add_native(dst_table, "max", "__native_xl_max_double", "_double_double", "double");

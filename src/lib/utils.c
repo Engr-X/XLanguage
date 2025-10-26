@@ -6,6 +6,62 @@
 
 #include "lib/utils.h"
 
+void stringlist_init(struct string_list* list)
+{
+    list -> head = NULL;
+    list -> tail = NULL;
+}
+
+void stringlist_add(struct string_list* list, const char* str)
+{
+    if (list -> head == NULL)
+    {
+        struct string_node* node = (struct string_node*)(malloc(sizeof(struct string_node)));
+        strcpy(node -> str, str);
+        node -> next = NULL;
+        list -> head = node;
+        list -> tail = node;
+    }
+    else
+    {
+        struct string_node* node = (struct string_node*)(malloc(sizeof(struct string_node)));
+        strcpy(node -> str, str);
+        node -> next = NULL;
+        list -> tail -> next = node;
+        list -> tail = node;
+    }
+}
+
+void stringlist_print(const struct string_list* list)
+{
+    struct string_node* p = list -> head;
+
+    printf("[");
+
+    while (p != NULL)
+    {
+        printf("%s", p -> str);
+        p = p -> next;
+
+        if (p != NULL)
+            printf(", ");
+    }
+
+    printf("]\n");
+}
+
+void stringlist_clear(struct string_list* list)
+{
+    struct string_node* p = list -> head;
+
+    while (p != NULL)
+    {
+        struct string_node* temp = p;
+        p = p -> next;
+        free(temp);
+    }
+}
+
 void utils_random_name(char* dst, uint8_t len)
 {
     if (len <= 0)
@@ -29,6 +85,51 @@ void utils_substring(const char* src, uint16_t from_index, uint16_t to_index, ch
     uint16_t len = to_index - from_index;
     strncpy(dst, src + from_index, len);
     dst[len] = '\0';
+}
+
+void utils_to_upper(char* str)
+{
+    for (int i = 0; i < strlen(str); i++)
+    {
+        if (str[i] >= 'a' && str[i] <= 'z')
+            str[i] -= 32;
+    }
+}
+
+static bool contain_char(const char* str, char c)
+{
+    for (int i = 0; i < strlen(str); i++)
+    {
+        if (str[i] == c)
+            return true;
+    }
+
+    return false;
+}
+
+void utils_string_split(struct string_list* list, const char* src, const char* delimiter)
+{
+    if (strlen(src) == 0)
+        return;
+
+    char buffer[256]; buffer[0] = '\0';
+    char* p = (char*)(src);
+
+    while (*p != '\0')
+    {
+        if (contain_char(delimiter, *p))
+            p++;
+        else
+        {
+            const uint16_t from_index = p - src;
+
+            while (*p != '\0' && !contain_char(delimiter, *p))
+                p++;
+
+            utils_substring(src, from_index, p - src, buffer);
+            stringlist_add(list, buffer);
+        }
+    }
 }
 
 bool utils_string_contain(const char* src, const char* str)

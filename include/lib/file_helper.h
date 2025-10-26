@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+void remove_extension(const char* file_name, char* dst);
 bool file_read(const char* path, const char* encoding, char* dst);
 bool file_write(const char* path, const char* content, bool append);
 bool file_delete(const char* path);

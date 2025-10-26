@@ -112,7 +112,7 @@ void translate_test(const char* code)
 
     free(token_stack);
     free(postfix);*/
-    codegen_generate_c_code(code, c_code);
+    //codegen_generate_c_code(code, c_code);
 
     free(c_code);
     free(return_type);
@@ -140,16 +140,15 @@ int main(int argc, char const *argv[])
     puts("start test");
 
     char* code = utils_new_string(2048);
-    strcpy(code, "int 3\n");
+    strcpy(code, "int 3   \n");
 
-    //codegen_separate(code, )
 
-    //function_test();
-    //operator_test();
-    //function_test()
-    //postfix_test(code);
-    translate_test(code);
-    //translate_test(code);
+    struct string_list string_list; stringlist_init(&string_list);
+
+    utils_string_split(&string_list, code, " \n");
+    stringlist_print(&string_list);
+    stringlist_clear(&string_list);
+
     free(code);
     return 0;
 }

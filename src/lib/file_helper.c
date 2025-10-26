@@ -38,6 +38,40 @@ void remove_r(char* code)
     }
 }
 
+void remove_extension(const char* file_path, char* dst)
+{
+    if (!file_path || !dst)
+        return;
+
+    const uint16_t len = strlen(file_path);
+    int slash_index = -1;
+    int dot_index = -1;
+
+    for (int i = len - 1; i >= 0; i--)
+    {
+        if (file_path[i] == '/' || file_path[i] == '\\')
+        {
+            slash_index = i;
+            break;
+        }
+    }
+
+    for (int i = len - 1; i > slash_index; i--)
+    {
+        if (file_path[i] == '.')
+        {
+            dot_index = i;
+            break;
+        }
+    }
+
+    if (dot_index == -1)
+        dot_index = len;
+
+    uint16_t from_index = (slash_index == -1) ? 0 : slash_index + 1;
+    utils_substring(file_path, from_index, dot_index, dst);
+}
+
 bool file_read(const char* path, const char* encoding, char* dst)
 {
     FILE* fp = fopen(path, "rb");

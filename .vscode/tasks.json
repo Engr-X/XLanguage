@@ -23,6 +23,7 @@
                 "${workspaceFolder}/src/core/type_convert.c",
                 "${workspaceFolder}/src/core/func_convert.c",
                 "${workspaceFolder}/src/core/expr_convert.c",
+                "${workspaceFolder}/src/core/expr_evaluator.c",
                 "${workspaceFolder}/src/core/codegen.c",
 
                 "-o",

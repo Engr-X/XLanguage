@@ -18,56 +18,6 @@ enum statement_type
     OTHER_OPERATION = 7
 };
 
-typedef struct string_node
-{
-    char path[128];
-    struct string_node* next;
-} StringNode;
-
-typedef struct string_list
-{
-    struct string_node* head;
-    struct string_node* tail;
-} StringList;
-
-static void stringlist_init(struct string_list* list)
-{
-    list -> head = NULL;
-    list -> tail = NULL;
-}
-
-static void stringlist_add(struct string_list* list, const char* path)
-{
-    if (list -> head == NULL)
-    {
-        struct string_node* node = (struct string_node*)(malloc(sizeof(struct string_node)));
-        strcpy(node -> path, path);
-        node -> next = NULL;
-        list -> head = node;
-        list -> tail = node;
-    }
-    else
-    {
-        struct string_node* node = (struct string_node*)(malloc(sizeof(struct string_node)));
-        strcpy(node -> path, path);
-        node -> next = NULL;
-        list -> tail -> next = node;
-        list -> tail = node;
-    }
-}
-
-static void stringlist_clear(struct string_list* list)
-{
-    struct string_node* p = list -> head;
-
-    while (p != NULL)
-    {
-        struct string_node* temp = p;
-        p = p -> next;
-        free(temp);
-    }
-}
-
 void statement_print(struct statement_list* list)
 {
     struct statement_node* p = list -> head;
@@ -381,61 +331,23 @@ static int get_assignment(const char* code)
     return index;
 }
 
-static void get_left_right_var(const char* line, char* left_buffer, char* right_buffer)
-{
-    char* p = (char*)(line);
-
-    while (*p != '\0' && utils_is_space(*p))
-        p++;
-
-    const char* start = p;
-
-    while (*p != '\0' && (utils_is_letter(*p) || utils_is_digit(*p) || *p == '_' || *p == '.'))
-        p++;
-    
-    utils_substring(start, 0, p - start, left_buffer);
-    utils_substring(p, 0, strlen(p), right_buffer);
-}
-
-static bool is_uppercase_string(const char* c)
-{
-    char* p = (char*)(c);
-    bool is_uppercase = true;
-
-    while (*p != '\0')
-    {
-        if (!utils_is_uppercase(*p) && *p != '_')
-        {
-            is_uppercase = false;
-            break;
-        }
-
-        p++;
-    }
-
-    return is_uppercase;
-}
-
-static void codegen_convert(struct statement_list* std_code, struct variable_table* variables,
-                            struct operation_table* operations,
-                            struct function_table* functions,
-                            bool is_main,
-                            char* varibale_buffer, char* expr_buffer, char* temp_buffer,
-                            char* other_dst, char* pre_dst, char* main_dst)
+static void codegen_iter(const struct statement_list* std_code, struct variable_table* variables,
+                        struct operation_table* operations,
+                        struct function_table* functions,
+                        bool is_main,
+                        char* varibale_buffer, char* expr_buffer, char* temp_buffer,
+                        char* extern_dst, char* global_dst, char* init_dst, char* main_dst)
 {
     struct statement_node* p = std_code -> head;
 
     struct token_stack token_stack;
     struct token_stack postfix;
-    struct string_list list;
 
     token_init(&token_stack);
     token_init(&postfix);
-    stringlist_init(&list);
 
-    char type_buffer[64];
-    char variable_buffer1[64];
-    char variable_buffer2[64];
+    char type_buffer[64]; *type_buffer = '\0';
+    char name_buffer[64]; *name_buffer = '\0';
 
     while (p != NULL)
     {
@@ -455,13 +367,6 @@ static void codegen_convert(struct statement_list* std_code, struct variable_tab
             {
                 case IF:
                 {
-                    // find ?
-                    /*const int16_t index2 = utils_code_indexof(code, "?");
-                    char* statment_p = (char*)(code);
-
-                    while (utils_is_space(*statment_p))
-                        statment_p--;*/
-
                     break;
                 }
 
@@ -497,30 +402,89 @@ static void codegen_convert(struct statement_list* std_code, struct variable_tab
                         expr_to_postfix(&token_stack, &postfix);
                         expr_convert(&postfix, variables, operations, functions, type_buffer, expr_buffer);
 
-                        get_left_right_var(varibale_buffer, variable_buffer1, variable_buffer2);
+                        struct string_list variable_def; stringlist_init(&variable_def);
+                        utils_string_split(&variable_def, varibale_buffer, " \t\n\r\f\v");
+                        bool is_const = false, is_extern = false;
+                        struct string_node* p2 = variable_def.head;
 
-                        const bool is_defined = variable_contain(variables, variable_buffer1);
-
-                        if (!is_defined)
+                        while (p2 != NULL)
                         {
-                            const bool is_constant = is_uppercase_string(variable_buffer1);
+                            if (strcmp(p2 -> str, "const") == 0 || strcmp(p2 -> str, "final") == 0)
+                                is_const = true;
+                            else if (strcmp(p2 -> str, "extern") == 0 || strcmp(p2 -> str, "export") == 0)
+                                is_extern = true;
+                            else
+                            {
+                                strcpy(name_buffer, p2 -> str);
+                                break;
+                            }
 
-                            if (is_constant)
-                                strcpy(main_dst, "const ");
+                            p2 = p2 -> next;
+                        }
 
-                            variable_add(variables, variable_buffer1, type_buffer, is_constant);
-                            strcat(main_dst, type_buffer);
-                            strcat(main_dst, " ");
+                        stringlist_clear(&variable_def);
+                        const bool is_defined = variable_contain(variables, name_buffer);
+
+                        if (is_defined && (is_const || is_extern))
+                        {
+                            printf_err("variable %s has been defined\n", name_buffer);
+                            token_clear(&postfix); token_clear(&token_stack);
+                        }
+
+                        if (is_defined)
+                        {
+                            struct variable* node = variable_get(variables, name_buffer);
+
+                            if (node -> is_const)
+                            {
+                                printf_err("variable %s is const\n", name_buffer);
+                                token_clear(&postfix); token_clear(&token_stack);
+                            }
+                        }
+
+                        temp_buffer[0] = '\0';
+                            
+                        if (is_defined)
+                        {
+                            if (is_const)
+                                printf_err("variable %s is const\n", name_buffer);
+
+                            if (is_extern)
+                                printf_err("variable %s is extern\n", name_buffer);
+                            else
+                            {
+                                sprintf(temp_buffer, "%s = %s;\n", name_buffer, expr_buffer);
+                                strcat(main_dst, temp_buffer);
+                            }
+                        }
+                        else
+                        {
+                            if (is_extern)
+                            {
+                                if (is_const)
+                                    printf_err("variable %s is cannot be const because it is extern\n", name_buffer);
+
+                                variable_add(variables, name_buffer, type_buffer, false);
+                                sprintf(temp_buffer, "extern %s %s;\n", type_buffer, name_buffer);
+                                strcat(extern_dst, temp_buffer);
+
+                                sprintf(temp_buffer, "%s %s;\n", type_buffer, name_buffer);
+                                strcat(global_dst, temp_buffer);
+
+                                sprintf(temp_buffer, "%s = %s;\n", name_buffer, expr_buffer);
+                                strcat(init_dst, temp_buffer);
+                            }
+                            else
+                            {
+                                variable_add(variables, name_buffer, type_buffer, is_const);
+                                sprintf(temp_buffer, "%s %s %s = %s;\n", is_const ? "const" : "", type_buffer, name_buffer, expr_buffer);
+                                strcat(main_dst, temp_buffer);
+                            }
                         }
                         
-                        strcat(main_dst, variable_buffer1);
-                        strcat(main_dst, " = ");
-                        strcat(main_dst, expr_buffer);
-                        strcat(main_dst, ";\n");
-                        break;   
+                        break;
                     }
                 }
-
                 default:
                 {
                     printf_err("unknown statement type %d\n", p -> type);
@@ -536,7 +500,7 @@ static void codegen_convert(struct statement_list* std_code, struct variable_tab
     }
 }
 
-void codegen(struct statement_list* c_code, char* other_dst, char* main_dst)
+static void codegen(const struct statement_list* c_code, char* head_code_dst, char* global_code_dst, char* init_dst, char* main_dst)
 {
     struct variable_table* global_variables = (struct variable_table*)(malloc(sizeof(struct variable_table)));
     struct operation_table* gloablal_operations = (struct operation_table*)(malloc(sizeof(struct operation_table)));
@@ -550,57 +514,99 @@ void codegen(struct statement_list* c_code, char* other_dst, char* main_dst)
     function_add_default(global_functions);
     //function_print(global_functions);
 
-    char buffer1[1024];
-    char buffer2[2048];
-    char buffer3[2048];
-    char* std_code = utils_new_string(8192);
+    char* buffer1 = utils_new_string(4096);
+    char* buffer2 = utils_new_string(4096);
+    char* buffer3 = utils_new_string(4096);
 
-    codegen_convert(c_code, global_variables, gloablal_operations, global_functions, true, buffer1, buffer2, buffer3, other_dst, NULL, main_dst);
-
+    codegen_iter(c_code, global_variables, gloablal_operations, global_functions, true,
+                 buffer1, buffer2, buffer3, head_code_dst, global_code_dst, init_dst, main_dst);
 
     variable_clear(global_variables); free(global_variables);
     operation_clear(gloablal_operations); free(gloablal_operations);
     function_clear(global_functions); free(global_functions);
-    
-    free(std_code);
+    free(buffer1); free(buffer2); free(buffer3);
 }
 
-void codegen_generate_c_code(const char* x_code, char* dst)
+static void get_src(const char* file_name, const char* outer, const char* init, const char* main, char* dst)
 {
-    strcpy(dst, "#include <stdio.h>\n");
-    strcat(dst, "#include <stdlib.h>\n");
-    strcat(dst, "#include <string.h>\n");
-    strcat(dst, "#include <math.h>\n");
-    strcat(dst, "#include <ctype.h>\n");
-    strcat(dst, "#include <stdbool.h>\n");
-    strcat(dst, "#include <time.h>\n");
-    strcat(dst, "#include <math.h>\n\n");
+    char format[1024] =
+        "#include \"%s.h\"\n\n"
 
-    strcat(dst, "#include <native_io.h>\n");
-    strcat(dst, "#include <native_std.h>\n");
-    strcat(dst, "#include <native_constants.h>\n\n");
+        "%s\n\n"
 
+        "void %s_init(int argc, char const *argv[])\n"
+        "{\n"
+        "\t%s\n"
+        "}\n\n"
+
+        "int main(int argc, char const *argv[])\n"
+        "{\n"
+        "\t%s_init(argc, argv);\n"
+        "\t%s\n"
+        "\treturn 0;\n"
+        "}";
+
+    //printf("outer: %s\n", outer);
+    //printf("init: %s\n", init);
+    //printf("main: %s\n", main);
+
+    sprintf(dst, format, file_name, outer, file_name, init, file_name, main);
+}
+
+static void get_header(const char* file_name, const char* head, char* dst)
+{
+    char upper_file_name[64];
+    strcpy(upper_file_name, file_name);
+    utils_to_upper(upper_file_name);
+
+    char format[1024] =
+        "#ifndef _X_%s_H_\n"
+        "#define _X_%s_H_\n\n"
+
+        "#include <stdio.h>\n"
+        "#include <stdlib.h>\n"
+        "#include <string.h>\n"
+        "#include <math.h>\n"
+        "#include <ctype.h>\n"
+        "#include <stdbool.h>\n"
+        "#include <time.h>\n"
+        "#include <math.h>\n\n"
+
+        "#include <native_io.h>\n"
+        "#include <native_std.h>\n"
+        "#include <native_constants.h>\n\n"
+
+        "%s\n\n"
+
+        "#endif";
+
+    //printf("upper_file_name: %s\n", upper_file_name);
+    //printf("head: %s\n", head);
+
+    sprintf(dst, format, upper_file_name, upper_file_name, head);
+}
+
+void codegen_complete(const char* file_name, const char* x_code, char* head_dst, char* src_dst)
+{
     struct statement_list statements;
     statement_init(&statements);
     codegen_separate(x_code, &statements, true, true);
     //statement_print(statements);
 
-    char* other_dst = utils_new_string(65536);
-    char* main_dst = utils_new_string(65536);
+    char* head_code = utils_new_string(65535);
+    char* global_code = utils_new_string(65536);
+    char* init_code = utils_new_string(65536);
+    char* main_code = utils_new_string(65536);
 
-    codegen(&statements, other_dst, main_dst);
+    codegen(&statements, head_code, global_code, init_code, main_code);
 
-    strcat(dst, other_dst);
-    strcat(dst, "int main(int argc, char const *argv[])\n{\n");
-    strcat(dst, "srand(time(NULL));\n\n");
-
-    strcat(dst, main_dst);
-    strcat(dst, "\n");
-
-    strcat(dst, "return 0;\n}");
+    get_header(file_name, head_code, head_dst);
+    get_src(file_name, global_code, init_code, main_code, src_dst);
 
     statement_clear(&statements);
 
-    free(other_dst);
-    free(main_dst);
+    free(head_code);
+    free(global_code);
+    free(init_code);
+    free(main_code);
 }

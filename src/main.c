@@ -93,7 +93,7 @@ int main(int argc, char const *argv[])
     srand(time(NULL));
     
     char gcc_path[1024];
-    int found = where("gcc", gcc_path);
+    const int found = where("gcc", gcc_path);
 
     if (!found)
     {
@@ -105,25 +105,34 @@ int main(int argc, char const *argv[])
     get_xlang_home(xlang_home);
     printf("xlang_home: %s\n", xlang_home);
 
-    struct file_list* file_list = (struct file_list*)(malloc(sizeof(struct file_list)));
-    file_init(file_list);
+    struct file_list file_list;
+    file_init(&file_list);
 
+    char file_name[128] = "\0";
     char* input = utils_new_string(65536);
-    char* c_code = utils_new_string(65536);
+    char* head_file = utils_new_string(65536);
+    char* c_file = utils_new_string(65536);
 
     for (int i = 1; i < argc; i++)
     {
         char* arg = (char*)(argv[i]);
-        uint64_t index = utils_string_indexof(arg, ".x");
+        const uint64_t index = utils_string_indexof(arg, ".x");
 
         if (index != (uint64_t)(-1))
         {
             file_read(arg, "UTF-8", input);
             printf("convert file: %s\n", arg);
-            codegen_generate_c_code(input, c_code);
+            remove_extension(arg, file_name);
+
+            codegen_complete(file_name, input, head_file, c_file);
+
+            arg[index + 1] = 'h';
+            file_add(&file_list, arg);
+            file_write(arg, head_file, false);
+
             arg[index + 1] = 'c'; 
-            file_add(file_list, arg);
-            file_write(arg, c_code, false);
+            file_add(&file_list, arg);
+            file_write(arg, c_file, false);
         }
     }
 
@@ -151,11 +160,11 @@ int main(int argc, char const *argv[])
         strcat(command, lib_cmd);
 
     //printf("run: %s\n", command);
-    utils_cmd(command);
+    //utils_cmd(command);
     printf("compile file end!\n");
 
     //delete .c
-    struct file_node* p = file_list -> head;
+    struct file_node* p = file_list.head;
 
     while (p != NULL)
     {
@@ -167,10 +176,10 @@ int main(int argc, char const *argv[])
     }
     
     free(input);
-    free(c_code);
+    free(head_file);
+    free(c_file);
     free(command);
     free(lib_cmd);
-    free(file_list);
     puts("done.");
     return 0;
 }

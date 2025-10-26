@@ -15,6 +15,7 @@ void variable_add(struct variable_table* table, const char* name, const char* ty
     if (v == NULL)
     {
         v = (struct variable*)(malloc(sizeof(struct variable)));
+        v -> is_const = is_const;
         *(v -> name) = '\0';
         *(v -> type) = '\0'; 
 
@@ -51,7 +52,7 @@ void variable_print(const struct variable_table* table)
     struct variable* v;
 
     for (v = table -> map; v != NULL; v = (struct variable*)(v -> hh.next), i++)
-        printf("%d: %s -> %s\n", i, v -> name, v -> type);
+        printf("%d: %s %s : %s\n", i, v -> is_const ? "const" : "", v -> name, v -> type);
 }
 
 void variable_clear(struct variable_table* table)

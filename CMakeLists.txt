@@ -44,6 +44,7 @@ add_library(LIB_UTILS_C OBJECT ${CMAKE_SOURCE_DIR}/src/lib/utils.c)
 add_library(LIB_TYPES_CONVERT_C OBJECT ${CMAKE_SOURCE_DIR}/src/core/type_convert.c)
 add_library(LIB_FUNC_CONVERT_C OBJECT ${CMAKE_SOURCE_DIR}/src/core/func_convert.c)
 add_library(LIB_EXPR_CONVERT_C OBJECT ${CMAKE_SOURCE_DIR}/src/core/expr_convert.c)
+add_library(LIB_EXPR_EVALUATOR_C OBJECT ${CMAKE_SOURCE_DIR}/src/core/expr_evaluator.c)
 add_library(LIB_CODEGEN_C OBJECT ${CMAKE_SOURCE_DIR}/src/core/codegen.c)
 add_executable(xlang ${CMAKE_SOURCE_DIR}/src/main.c)
 
@@ -57,6 +58,7 @@ target_link_libraries(xlang
     $<TARGET_OBJECTS:LIB_TYPES_CONVERT_C>
     $<TARGET_OBJECTS:LIB_FUNC_CONVERT_C>
     $<TARGET_OBJECTS:LIB_EXPR_CONVERT_C>
+    $<TARGET_OBJECTS:LIB_EXPR_EVALUATOR_C>
     $<TARGET_OBJECTS:LIB_CODEGEN_C>
 )
 
