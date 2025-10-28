@@ -32,6 +32,7 @@ bool utils_code_contain(const char* std_code, const char* str);
 bool utils_string_contain(const char* src, const char* str);
 uint64_t utils_string_indexof(const char* src, const char* str);
 uint64_t utils_code_indexof(const char* src, const char* str);
+uint64_t utils_code_lastindexof(const char* std_code, const char* str);
 char* utils_new_string(uint64_t length);
 
 bool utils_is_digit(char c);

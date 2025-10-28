@@ -111,7 +111,8 @@ static void analyze_plus_minus(const char* s, int8_t* dst)
         // ---------- detect single + / - ----------
         bool is_unary = false;
 
-        int64_t j = (int64_t)i - 1;
+        int64_t j = (int64_t)(i - 1);
+        
         while (j >= 0 && (s[j] == ' ' || s[j] == '\t'))  // 只跳过空格和制表符
             j--;
 
@@ -235,7 +236,7 @@ void expr_tokenize(const char* std_code, struct token_stack* dst)
 
             case '=':
             {
-                if (*p + 1 != '\n')
+                if (*(p + 1) != '=')
                     printf_err("%serror occur: = occur in expression\n");
 
                 p++;

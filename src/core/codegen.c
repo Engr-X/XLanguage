@@ -212,7 +212,6 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
         if (prev_p == p) continue;
 
         utils_substring(prev_p, 0, p - prev_p, buffer);
-        //puts(buffer);
 
         const bool is_class_def = utils_code_contain(buffer, "class");
         const bool is_func_def = utils_code_contain(buffer, "func");
@@ -256,7 +255,6 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
                 utils_substring(prev_p, 0, p - prev_p, buffer);
                 prev_p = p;
                 statement_add(dst, buffer, IF_ELSE);
-                printf("if-else: [%s]\n", buffer);
             }
             else
             {
@@ -294,11 +292,12 @@ static int get_assignment(const char* code)
     {
         if (*iter == '"')
         {
-            iter++; // 跳过初始 "
+            iter++;
+
             while (*iter != '\0')
             {
                 if (*iter == '\\' && *(iter + 1) != '\0') iter++;
-                else if (*iter == '"') break; // 找到真正的结束 "
+                else if (*iter == '"') break;
                     iter++;
             }
         }
@@ -331,12 +330,19 @@ static int get_assignment(const char* code)
     return index;
 }
 
+static void remove_bracket(char* code)
+{
+    const uint16_t from_index = utils_code_indexof(code, "{") + 1;
+    const uint16_t to_index = utils_code_lastindexof(code, "}");
+    utils_substring(code, from_index, to_index, code);
+}
+
 static void codegen_iter(const struct statement_list* std_code, struct variable_table* variables,
                         struct operation_table* operations,
                         struct function_table* functions,
                         bool is_main,
                         char* varibale_buffer, char* expr_buffer, char* temp_buffer,
-                        char* extern_dst, char* global_dst, char* init_dst, char* main_dst)
+                        char* extern_dst, char* global_dst, char* main_dst)
 {
     struct statement_node* p = std_code -> head;
 
@@ -366,13 +372,66 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
             switch (p -> type)
             {
                 case IF:
+                case IF_ELSE:
+                case LOOP:
                 {
+                    const bool is_loop = p -> type == LOOP;
+                    const bool have_else = p -> type == IF_ELSE;
+
+                    const uint16_t greetings_index = utils_code_indexof(code, is_loop ? "?->" : "?");
+                    const uint16_t colon_index = utils_code_indexof(code, ":");
+
+                    utils_substring(code, greetings_index + 1, have_else ? colon_index : strlen(code), temp_buffer);
+                    remove_bracket(temp_buffer);
+                    utils_substring(code, 0, greetings_index, expr_buffer);
+
+                    struct token_stack statment_infix; token_init(&statment_infix);
+                    struct token_stack statment_postfix; token_init(&statment_postfix);
+                    expr_tokenize(expr_buffer, &statment_infix);
+                    expr_to_postfix(&statment_infix, &statment_postfix);
+                    char if_statement_type[64];
+                    char if_statment[1024];
+                    expr_convert(&statment_postfix, variables, operations, functions, if_statement_type, if_statment);
+
+                    token_clear(&statment_infix);
+                    token_clear(&statment_postfix);
+
+                    // warning: if may be in function init
+                    strcat(main_dst, is_loop ? "while (" : "if (");
+                    strcat(main_dst, if_statment);
+                    strcat(main_dst, ")\n{\n");
+
+                    struct statement_list if_statment_list; statement_init(&if_statment_list);
+                    codegen_separate(temp_buffer, &if_statment_list, false, true);
+
+                    codegen_iter(&if_statment_list, variables, operations, functions, false,
+                                 varibale_buffer, expr_buffer, temp_buffer,
+                                 extern_dst, global_dst, main_dst);
+
+                    statement_clear(&if_statment_list);
+                    strcat(main_dst, "}\n");
+
+                    if (have_else)
+                    {
+                        strcat(main_dst, "else\n{\n");
+                        // from : to end of string
+                        utils_substring(code, colon_index + 1, strlen(code), temp_buffer);
+                        remove_bracket(temp_buffer);
+
+                        statement_init(&if_statment_list);
+
+                        codegen_separate(temp_buffer, &if_statment_list, false, true);
+                        codegen_iter(&if_statment_list, variables, operations, functions, false,
+                                    varibale_buffer, expr_buffer, temp_buffer,
+                                    extern_dst, global_dst, main_dst);
+                        statement_clear(&if_statment_list);
+                        strcat(main_dst, "}\n");
+                    }
+
                     break;
                 }
 
-                case IF_ELSE:
                 case SWITCH_CASE:
-                case LOOP:
                 case ITERATION:
                 {
                     puts("not implemented yet");
@@ -472,7 +531,7 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
                                 strcat(global_dst, temp_buffer);
 
                                 sprintf(temp_buffer, "%s = %s;\n", name_buffer, expr_buffer);
-                                strcat(init_dst, temp_buffer);
+                                strcat(main_dst, temp_buffer);
                             }
                             else
                             {
@@ -500,7 +559,7 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
     }
 }
 
-static void codegen(const struct statement_list* c_code, char* head_code_dst, char* global_code_dst, char* init_dst, char* main_dst)
+static void codegen(const struct statement_list* c_code, char* head_code_dst, char* global_code_dst, char* main_dst)
 {
     struct variable_table* global_variables = (struct variable_table*)(malloc(sizeof(struct variable_table)));
     struct operation_table* gloablal_operations = (struct operation_table*)(malloc(sizeof(struct operation_table)));
@@ -519,7 +578,7 @@ static void codegen(const struct statement_list* c_code, char* head_code_dst, ch
     char* buffer3 = utils_new_string(4096);
 
     codegen_iter(c_code, global_variables, gloablal_operations, global_functions, true,
-                 buffer1, buffer2, buffer3, head_code_dst, global_code_dst, init_dst, main_dst);
+                 buffer1, buffer2, buffer3, head_code_dst, global_code_dst, main_dst);
 
     variable_clear(global_variables); free(global_variables);
     operation_clear(gloablal_operations); free(gloablal_operations);
@@ -527,22 +586,29 @@ static void codegen(const struct statement_list* c_code, char* head_code_dst, ch
     free(buffer1); free(buffer2); free(buffer3);
 }
 
-static void get_src(const char* file_name, const char* outer, const char* init, const char* main, char* dst)
+static void get_src(const char* file_name, const char* outer, const char* main, char* dst)
 {
-    char format[1024] =
+    char variable_buffer[128] = "";
+    sprintf(variable_buffer, "%s_init_called", file_name);
+
+    char format[2048] =
         "#include \"%s.h\"\n\n"
 
         "%s\n\n"
 
-        "void %s_init(int argc, char const *argv[])\n"
+        "void %s_main(int argc, char const *argv[])\n"
         "{\n"
+        "\tstatic bool %s = 0;\n\n"
+        "\tif (!%s)\n"
+        "\t{\n"
+        "\t\t%s = true;\n"
         "\t%s\n"
+        "\t}\n"
         "}\n\n"
 
         "int main(int argc, char const *argv[])\n"
         "{\n"
-        "\t%s_init(argc, argv);\n"
-        "\t%s\n"
+        "\t%s_main(argc, argv);\n"
         "\treturn 0;\n"
         "}";
 
@@ -550,7 +616,7 @@ static void get_src(const char* file_name, const char* outer, const char* init, 
     //printf("init: %s\n", init);
     //printf("main: %s\n", main);
 
-    sprintf(dst, format, file_name, outer, file_name, init, file_name, main);
+    sprintf(dst, format, file_name, outer, file_name, variable_buffer, variable_buffer, variable_buffer, main, file_name);
 }
 
 static void get_header(const char* file_name, const char* head, char* dst)
@@ -577,13 +643,14 @@ static void get_header(const char* file_name, const char* head, char* dst)
         "#include <native_constants.h>\n\n"
 
         "%s\n\n"
+        "inline void %s_main(int argc, char const *argv[]);\n\n"
 
         "#endif";
 
     //printf("upper_file_name: %s\n", upper_file_name);
     //printf("head: %s\n", head);
 
-    sprintf(dst, format, upper_file_name, upper_file_name, head);
+    sprintf(dst, format, upper_file_name, upper_file_name, head, file_name);
 }
 
 void codegen_complete(const char* file_name, const char* x_code, char* head_dst, char* src_dst)
@@ -595,18 +662,16 @@ void codegen_complete(const char* file_name, const char* x_code, char* head_dst,
 
     char* head_code = utils_new_string(65535);
     char* global_code = utils_new_string(65536);
-    char* init_code = utils_new_string(65536);
     char* main_code = utils_new_string(65536);
 
-    codegen(&statements, head_code, global_code, init_code, main_code);
+    codegen(&statements, head_code, global_code, main_code);
 
     get_header(file_name, head_code, head_dst);
-    get_src(file_name, global_code, init_code, main_code, src_dst);
+    get_src(file_name, global_code, main_code, src_dst);
 
     statement_clear(&statements);
 
     free(head_code);
     free(global_code);
-    free(init_code);
     free(main_code);
 }

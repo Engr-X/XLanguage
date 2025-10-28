@@ -77,6 +77,56 @@ void postfix_test(const char* code)
     free(postfix);
 }
 
+int64_t new_utils_code_lastindexof(const char* std_code, const char* str)
+{
+    const int64_t len_code = strlen(std_code);
+    const int64_t len_str = strlen(str);
+
+    if (len_code < len_str || len_str == 0)
+        return -1;
+
+    for (int64_t i = len_code - 1; i >= 0; i--)
+    {
+        if (std_code[i] == '"' || std_code[i] == '\'')
+        {
+            char quote = std_code[i];
+            i--;
+            while (i >= 0)
+            {
+                if (std_code[i] == quote)
+                {
+                    int backslashes = 0;
+                    for (int64_t k = i - 1; k >= 0 && std_code[k] == '\\'; k--)
+                        backslashes++;
+                    if (backslashes % 2 == 0)
+                        break;
+                }
+                i--;
+            }
+            continue;
+        }
+
+        if (i >= len_str - 1)
+        {
+            bool match = true;
+
+            for (int64_t j = 0; j < len_str; j++)
+            {
+                if (std_code[i - (len_str - 1 - j)] != str[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match)
+                return i - len_str + 1;
+        }
+    }
+
+    return -1;
+}
+
 void translate_test(const char* code)
 {
     char* return_type = utils_new_string(32);
@@ -135,19 +185,21 @@ inline static void format_dual_arity1(const char* op, char* c_format)
     sprintf(c_format, "%%s %s %%s", op);
 }
 
+void remove_bracket(const char* code, char* dst)
+{
+    const uint16_t from_index = utils_code_indexof(code, "{") + 1;
+    const uint16_t to_index = utils_code_lastindexof(code, "}");
+    utils_substring(code, from_index, to_index, dst);
+}
+
 int main(int argc, char const *argv[])
 {
     puts("start test");
 
     char* code = utils_new_string(2048);
-    strcpy(code, "int 3   \n");
+    strcpy(code, "\n{\nint 3\n|} ");
 
-
-    struct string_list string_list; stringlist_init(&string_list);
-
-    utils_string_split(&string_list, code, " \n");
-    stringlist_print(&string_list);
-    stringlist_clear(&string_list);
+    printf("code: %d\n", new_utils_code_lastindexof(code, "}"));
 
     free(code);
     return 0;

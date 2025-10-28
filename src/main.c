@@ -160,7 +160,7 @@ int main(int argc, char const *argv[])
         strcat(command, lib_cmd);
 
     //printf("run: %s\n", command);
-    //utils_cmd(command);
+    utils_cmd(command);
     printf("compile file end!\n");
 
     //delete .c

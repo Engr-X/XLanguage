@@ -246,7 +246,6 @@ uint64_t utils_string_indexof(const char* src, const char* str)
     return -1;
 }
 
-
 uint64_t utils_code_indexof(const char* std_code, const char* str)
 {
     const uint64_t len_code = strlen(std_code);
@@ -292,6 +291,56 @@ uint64_t utils_code_indexof(const char* std_code, const char* str)
 
             if (match)
                 return i;
+        }
+    }
+
+    return -1;
+}
+
+uint64_t utils_code_lastindexof(const char* std_code, const char* str)
+{
+    const int64_t len_code = strlen(std_code);
+    const int64_t len_str = strlen(str);
+
+    if (len_code < len_str || len_str == 0)
+        return -1;
+
+    for (int64_t i = len_code - 1; i >= 0; i--)
+    {
+        if (std_code[i] == '"' || std_code[i] == '\'')
+        {
+            char quote = std_code[i];
+            i--;
+            while (i >= 0)
+            {
+                if (std_code[i] == quote)
+                {
+                    int backslashes = 0;
+                    for (int64_t k = i - 1; k >= 0 && std_code[k] == '\\'; k--)
+                        backslashes++;
+                    if (backslashes % 2 == 0)
+                        break;
+                }
+                i--;
+            }
+            continue;
+        }
+
+        if (i >= len_str - 1)
+        {
+            bool match = true;
+
+            for (int64_t j = 0; j < len_str; j++)
+            {
+                if (std_code[i - (len_str - 1 - j)] != str[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match)
+                return i - len_str + 1;
         }
     }
 
