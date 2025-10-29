@@ -1,4 +1,5 @@
 #include <math.h>
+#include <time.h>
 
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
@@ -31,6 +32,14 @@ double __native_xl_sum_3double(double a, double b, double c)
 double __native_xl_pi()
 {
     return M_PI;
+}
+
+long long __native_xl_get_time()
+{
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+
+    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
 #endif

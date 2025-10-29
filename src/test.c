@@ -68,63 +68,13 @@ void postfix_test(const char* code)
     expr_tokenize(code, token_stack);
     expr_to_postfix(token_stack, postfix);
 
-    token_print(postfix);
+    token_print(token_stack);
 
     token_clear(postfix);
     token_clear(token_stack);
     
     free(token_stack);
     free(postfix);
-}
-
-int64_t new_utils_code_lastindexof(const char* std_code, const char* str)
-{
-    const int64_t len_code = strlen(std_code);
-    const int64_t len_str = strlen(str);
-
-    if (len_code < len_str || len_str == 0)
-        return -1;
-
-    for (int64_t i = len_code - 1; i >= 0; i--)
-    {
-        if (std_code[i] == '"' || std_code[i] == '\'')
-        {
-            char quote = std_code[i];
-            i--;
-            while (i >= 0)
-            {
-                if (std_code[i] == quote)
-                {
-                    int backslashes = 0;
-                    for (int64_t k = i - 1; k >= 0 && std_code[k] == '\\'; k--)
-                        backslashes++;
-                    if (backslashes % 2 == 0)
-                        break;
-                }
-                i--;
-            }
-            continue;
-        }
-
-        if (i >= len_str - 1)
-        {
-            bool match = true;
-
-            for (int64_t j = 0; j < len_str; j++)
-            {
-                if (std_code[i - (len_str - 1 - j)] != str[j])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-                return i - len_str + 1;
-        }
-    }
-
-    return -1;
 }
 
 void translate_test(const char* code)
@@ -197,9 +147,10 @@ int main(int argc, char const *argv[])
     puts("start test");
 
     char* code = utils_new_string(2048);
-    strcpy(code, "\n{\nint 3\n|} ");
+    strcpy(code, "i %% j != 1");
 
-    printf("code: %d\n", new_utils_code_lastindexof(code, "}"));
+    postfix_test(code);
+    //printf("code: %d\n", new_utils_code_lastindexof(code, "}"));
 
     free(code);
     return 0;

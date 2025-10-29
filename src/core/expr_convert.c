@@ -250,9 +250,9 @@ void expr_tokenize(const char* std_code, struct token_stack* dst)
                 const bool not_equal_case = *(p + 1) == '='; // !=
                 const bool xnor_case = *(p + 1) == '^';
                 strcpy(buffer, not_equal_case ? "!=" : (xnor_case ? "!^" : "!"));
-                token_add(dst, buffer, TT_OPERATION, xnor_case ? O_BITS_XNOR : O_BITS_REVERSE);
+                token_add(dst, buffer, TT_OPERATION, not_equal_case ? O_NOT_EQUAL : (xnor_case ? O_BITS_XNOR : O_BITS_REVERSE));
 
-                if (not_equal_case || xnor_case)    
+                if (not_equal_case || xnor_case)
                     p++;
 
                 break;
@@ -362,7 +362,7 @@ void expr_tokenize(const char* std_code, struct token_stack* dst)
                 
                 break;
             }
-
+            
             case '%':
             case '&':
             {
@@ -672,7 +672,10 @@ static void classify_token(struct token_stack* postfix, const struct variable_ta
                 const bool contain_var = variable_contain(variable_table, p -> token);
 
                 if (!contain_var)
-                    printf_err("cannot find variable");
+                {
+                    printf_err("cannot find variable: [%s]", p -> token);
+                    variable_print(variable_table);
+                }
                 else
                 {
                     const struct variable* var = variable_get(variable_table, p -> token);

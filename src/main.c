@@ -159,7 +159,7 @@ int main(int argc, char const *argv[])
     #endif
         strcat(command, lib_cmd);
 
-    //printf("run: %s\n", command);
+    printf("run: %s\n", command);
     utils_cmd(command);
     printf("compile file end!\n");
 

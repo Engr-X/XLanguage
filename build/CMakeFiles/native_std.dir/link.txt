@@ -1,0 +1,2 @@
+D:\Coding\compilers\Mingw-13.2.0\bin\ar.exe qc lib\libnative_std.a CMakeFiles/native_std.dir/src/native/std.c.obj
+D:\Coding\compilers\Mingw-13.2.0\bin\ranlib.exe lib\libnative_std.a

@@ -180,4 +180,5 @@ void function_add_default(struct function_table* dst_table)
 
     function_add_native(dst_table, "sum", "__native_xl_sum_3double", "_double_double_double", "double");
     function_add_native(dst_table, "pi", "__native_xl_pi", "", "double");
+    function_add_native(dst_table, "get_time", "__native_xl_get_time", "", "long");
 }

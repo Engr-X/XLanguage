@@ -2,6 +2,7 @@
 
 #include "lib/utils.h"
 #include "core/expr_convert.h"
+#include "core/type_convert.h"
 
 #define CLASS_DEF_KEYWORD "class"
 #define FUNCTION_DEF_KEYWORD "func"
@@ -213,8 +214,8 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
 
         utils_substring(prev_p, 0, p - prev_p, buffer);
 
-        const bool is_class_def = utils_code_contain(buffer, "class");
-        const bool is_func_def = utils_code_contain(buffer, "func");
+        const bool is_class_def = utils_code_contain(buffer, "class", false);
+        const bool is_func_def = utils_code_contain(buffer, "func", false);
 
         if (is_class_def || is_func_def)
         {
@@ -227,9 +228,9 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
         }
         
         // if else statement
-        const bool select = utils_code_contain(buffer, "?");
-        const bool loop = utils_code_contain(buffer, "?->");
-        const bool iteration = utils_code_contain(buffer, "->");
+        const bool select = utils_code_contain(buffer, "?", false);
+        const bool loop = utils_code_contain(buffer, "?->", false);
+        const bool iteration = utils_code_contain(buffer, "->", false);
 
         if (select && !loop) // if statement
         {
@@ -260,7 +261,7 @@ void codegen_separate(const char* x_code, struct statement_list* dst, bool allow
             {
                 utils_substring(prev_p, 0, temp - prev_p, buffer);
                 prev_p = p;
-                bool is_switch = utils_code_contain(buffer, "default");
+                bool is_switch = utils_code_contain(buffer, "default", false);
                 statement_add(dst, buffer, is_switch ? SWITCH_CASE : IF);   
             }
         }
@@ -332,7 +333,7 @@ static int get_assignment(const char* code)
 
 static void remove_bracket(char* code)
 {
-    const uint16_t from_index = utils_code_indexof(code, "{") + 1;
+    const uint16_t from_index = utils_code_indexof(code, "{", false) + 1;
     const uint16_t to_index = utils_code_lastindexof(code, "}");
     utils_substring(code, from_index, to_index, code);
 }
@@ -348,9 +349,11 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
 
     struct token_stack token_stack;
     struct token_stack postfix;
+    struct string_list temp_variable_def;
 
     token_init(&token_stack);
     token_init(&postfix);
+    stringlist_init(&temp_variable_def);
 
     char type_buffer[64]; *type_buffer = '\0';
     char name_buffer[64]; *name_buffer = '\0';
@@ -378,8 +381,9 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
                     const bool is_loop = p -> type == LOOP;
                     const bool have_else = p -> type == IF_ELSE;
 
-                    const uint16_t greetings_index = utils_code_indexof(code, is_loop ? "?->" : "?");
-                    const uint16_t colon_index = utils_code_indexof(code, ":");
+
+                    const uint16_t greetings_index = utils_code_indexof(code, is_loop ? "?->" : "?", false);
+                    const uint16_t colon_index = utils_code_indexof(code, ":", false);
 
                     utils_substring(code, greetings_index + 1, have_else ? colon_index : strlen(code), temp_buffer);
                     remove_bracket(temp_buffer);
@@ -522,8 +526,16 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
                             {
                                 if (is_const)
                                     printf_err("variable %s is cannot be const because it is extern\n", name_buffer);
-
+                                
                                 variable_add(variables, name_buffer, type_buffer, false);
+
+                                if (!is_main)
+                                {
+                                    printf_err("extern variable %s cannot be defined in function or if for\n", name_buffer);
+                                }
+
+                                type_tran_to_ctype((const char*)(type_buffer), type_buffer);
+                                
                                 sprintf(temp_buffer, "extern %s %s;\n", type_buffer, name_buffer);
                                 strcat(extern_dst, temp_buffer);
 
@@ -536,6 +548,11 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
                             else
                             {
                                 variable_add(variables, name_buffer, type_buffer, is_const);
+                                
+                                if (!is_main)
+                                    stringlist_add(&temp_variable_def, name_buffer);
+
+                                type_tran_to_ctype((const char*)(type_buffer), type_buffer);
                                 sprintf(temp_buffer, "%s %s %s = %s;\n", is_const ? "const" : "", type_buffer, name_buffer, expr_buffer);
                                 strcat(main_dst, temp_buffer);
                             }
@@ -556,6 +573,16 @@ static void codegen_iter(const struct statement_list* std_code, struct variable_
         }   
 
         p = p -> next;
+    }
+
+    struct string_node* p_temp = temp_variable_def.head;
+
+    while (p_temp != NULL)
+    {
+        struct string_node* current_node = p_temp;
+        variable_remove(variables, p_temp -> str);
+        p_temp = p_temp -> next;
+        free(current_node);
     }
 }
 
@@ -596,7 +623,7 @@ static void get_src(const char* file_name, const char* outer, const char* main, 
 
         "%s\n\n"
 
-        "void %s_main(int argc, char const *argv[])\n"
+        "int %s_main(int argc, char const *argv[])\n"
         "{\n"
         "\tstatic bool %s = 0;\n\n"
         "\tif (!%s)\n"
@@ -604,12 +631,12 @@ static void get_src(const char* file_name, const char* outer, const char* main, 
         "\t\t%s = true;\n"
         "\t%s\n"
         "\t}\n"
+        "\treturn 0;\n"
         "}\n\n"
 
         "int main(int argc, char const *argv[])\n"
         "{\n"
-        "\t%s_main(argc, argv);\n"
-        "\treturn 0;\n"
+        "\treturn %s_main(argc, argv);\n"
         "}";
 
     //printf("outer: %s\n", outer);
@@ -643,7 +670,7 @@ static void get_header(const char* file_name, const char* head, char* dst)
         "#include <native_constants.h>\n\n"
 
         "%s\n\n"
-        "inline void %s_main(int argc, char const *argv[]);\n\n"
+        "inline int %s_main(int argc, char const *argv[]);\n\n"
 
         "#endif";
 

@@ -28,10 +28,10 @@ void utils_random_name(char* dst, uint8_t len);
 void utils_substring(const char* src, uint16_t from_index, uint16_t to_index, char* dst);
 void utils_to_upper(char* str);
 void utils_string_split(struct string_list* list, const char* src, const char* delimiter);
-bool utils_code_contain(const char* std_code, const char* str);
+bool utils_code_contain(const char* std_code, const char* str, bool only_outside);
 bool utils_string_contain(const char* src, const char* str);
 uint64_t utils_string_indexof(const char* src, const char* str);
-uint64_t utils_code_indexof(const char* src, const char* str);
+uint64_t utils_code_indexof(const char* src, const char* str, bool only_outside);
 uint64_t utils_code_lastindexof(const char* std_code, const char* str);
 char* utils_new_string(uint64_t length);
 

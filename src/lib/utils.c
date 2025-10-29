@@ -163,51 +163,57 @@ bool utils_string_contain(const char* src, const char* str)
     return false;
 }
 
-bool utils_code_contain(const char* std_code, const char* str)
+bool utils_code_contain(const char* std_code, const char* str, bool only_outside)
 {
     const uint64_t len_code = strlen(std_code);
     const uint64_t len_str  = strlen(str);
 
     for (uint64_t i = 0; i < len_code; i++)
     {
-        if (std_code[i] == '"')
+        switch (std_code[i])
         {
-            i++;
-
-            while (i < len_code && std_code[i] != '"')
-                i++;
-
-            continue;
-        }
-
-        if (std_code[i] == '\'')
-        {
-            i++;
-
-            while (i < len_code && std_code[i] != '\'')
-                i++;
-
-            continue;
-        }
-
-        if (std_code[i] == str[0])
-        {
-            if (i + len_str > len_code)
-                break;
-
-            bool match = true;
-
-            for (uint64_t j = 1; j < len_str; j++)
+            case '"':
             {
-                if (std_code[i + j] != str[j])
-                {
-                    match = false;
-                    break; 
-                }
+                i++;
+
+                while (i < len_code && std_code[i] != '"')
+                    i++;
+
+                break;
             }
 
-            if (match)
-                return true;
+            case '\'':
+            {
+                i++;
+
+                while (i < len_code && std_code[i] != '\'')
+                    i++;
+
+                break;
+            }
+
+            default:
+            {
+                if (std_code[i] == str[0])
+                {
+                    if (i + len_str > len_code)
+                        break;
+
+                    bool match = true;
+
+                    for (uint64_t j = 1; j < len_str; j++)
+                    {
+                        if (std_code[i + j] != str[j])
+                        {
+                            match = false;
+                            break; 
+                        }
+                    }
+
+                    if (match)
+                        return true;
+                }
+            }
         }
     }
 
@@ -246,51 +252,59 @@ uint64_t utils_string_indexof(const char* src, const char* str)
     return -1;
 }
 
-uint64_t utils_code_indexof(const char* std_code, const char* str)
+uint64_t utils_code_indexof(const char* std_code, const char* str, bool only_outside)
 {
     const uint64_t len_code = strlen(std_code);
     const uint64_t len_str  = strlen(str);
 
     for (uint64_t i = 0; i < len_code; i++)
     {
-        if (std_code[i] == '"')
+        switch (std_code[i])
         {
-            i++;
-
-            while (i < len_code && std_code[i] != '"')
-                i++;
-
-            continue;
-        }
-
-        if (std_code[i] == '\'')
-        {
-            i++;
-
-            while (i < len_code && std_code[i] != '\'')
-                i++;
-                
-            continue;
-        }
-
-        if (std_code[i] == str[0])
-        {
-            if (i + len_str > len_code)
-                return -1;
-
-            bool match = true;
-
-            for (uint64_t j = 1; j < len_str; j++)
+            case '"':
             {
-                if (std_code[i + j] != str[j])
-                {
-                    match = false;
-                    break;
-                }
+                i++;
+
+                while (i < len_code && std_code[i] != '"')
+                    i++;
+
+                break;
             }
 
-            if (match)
-                return i;
+            case '\'':
+            {
+                i++;
+
+                while (i < len_code && std_code[i] != '\'')
+                    i++;
+                    
+                break;
+            }
+
+            default:
+            {
+                if (std_code[i] == str[0])
+                {
+                    if (i + len_str > len_code)
+                        return -1;
+
+                    bool match = true;
+
+                    for (uint64_t j = 1; j < len_str; j++)
+                    {
+                        if (std_code[i + j] != str[j])
+                        {
+                            match = false;
+                            break;
+                        }
+                    }
+
+                    if (match)
+                        return i;
+                }
+
+                break;
+            }
         }
     }
 

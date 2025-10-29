@@ -320,7 +320,7 @@ static void operation_add_dual_bit(struct operation_table* table, const char* op
 
 static void operation_add_arithmetic(struct operation_table* table, const char* op, char* buffer1, char* buffer2, char* op_buffer)
 {
-    const bool is_mod = strcmp(op, "%%") == 0;
+    const bool is_mod = strcmp(op, "%%") == 0 || strcmp(op, "%") == 0;
     const bool is_pow = strcmp(op, "**") == 0;
 
     for (uint8_t i = 0; i < X_NUMERIC_TYPES_LENGTH; i++)
@@ -341,7 +341,7 @@ static void operation_add_arithmetic(struct operation_table* table, const char* 
             else if (is_mod)
             {
                 if (i <= 10 && j <= 10)
-                    operation_add_native(table, buffer1, op, op_buffer, buffer2, "int");
+                    operation_add_native(table, buffer1, op, op_buffer, buffer2, X_NUMERIC_TYPES[max(i, j)]);
             }
             else
             {
