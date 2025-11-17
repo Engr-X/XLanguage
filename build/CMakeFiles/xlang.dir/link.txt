@@ -1,3 +1,0 @@
-D:\Coding\compilers\buildTools\CMake\bin\cmake.exe -E rm -f CMakeFiles\xlang.dir/objects.a
-D:\Coding\compilers\Mingw-13.2.0\bin\ar.exe qc CMakeFiles\xlang.dir/objects.a @CMakeFiles\xlang.dir\objects1.rsp
-D:\Coding\compilers\Mingw-13.2.0\bin\gcc.exe  -O3 -Wall -Ofast -Wl,--whole-archive CMakeFiles\xlang.dir/objects.a -Wl,--no-whole-archive -o bin\xlang.exe -Wl,--out-implib,lib\libxlang.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\xlang.dir\linkLibs.rsp

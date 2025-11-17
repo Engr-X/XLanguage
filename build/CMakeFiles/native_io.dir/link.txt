@@ -1,2 +1,0 @@
-D:\Coding\compilers\Mingw-13.2.0\bin\ar.exe qc lib\libnative_io.a CMakeFiles/native_io.dir/src/native/io.c.obj
-D:\Coding\compilers\Mingw-13.2.0\bin\ranlib.exe lib\libnative_io.a
